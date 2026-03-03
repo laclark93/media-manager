@@ -31,6 +31,9 @@ export function Settings() {
         testRadarr={testRadarr}
         testJellyseerr={testJellyseerr}
       />
+      <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: 32 }}>
+        v1.2.2
+      </p>
     </div>
   );
 }
