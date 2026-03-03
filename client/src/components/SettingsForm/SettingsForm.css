@@ -190,6 +190,29 @@
   border-color: var(--danger);
 }
 
+.settings-form__signin-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 8px;
+  transition: color 0.15s;
+}
+
+.settings-form__signin-toggle:hover {
+  color: var(--text-primary);
+}
+
+.settings-form__signin-section {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-primary);
+}
+
 /* ── Mobile ───────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .settings-form__tabs {

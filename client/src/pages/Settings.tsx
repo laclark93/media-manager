@@ -2,7 +2,7 @@ import { useSettings } from '../hooks/useSettings';
 import { SettingsForm } from '../components/SettingsForm/SettingsForm';
 
 export function Settings() {
-  const { settings, loading, error, refresh, save, testSonarr, testRadarr, testJellyseerr } = useSettings();
+  const { settings, loading, error, refresh, save, testSonarr, testRadarr, testJellyseerr, testPlex } = useSettings();
 
   if (loading) {
     return <div className="page"><div className="loading">Loading settings</div></div>;
@@ -30,9 +30,10 @@ export function Settings() {
         testSonarr={testSonarr}
         testRadarr={testRadarr}
         testJellyseerr={testJellyseerr}
+        testPlex={testPlex}
       />
       <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: 32 }}>
-        v1.3.0
+        v1.4.0
       </p>
     </div>
   );

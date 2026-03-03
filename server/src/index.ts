@@ -7,6 +7,7 @@ import sonarrRouter from './routes/sonarr.js';
 import radarrRouter from './routes/radarr.js';
 import settingsRouter from './routes/settings.js';
 import jellyseerrRouter from './routes/jellyseerr.js';
+import plexRouter from './routes/plex.js';
 import authRouter from './routes/auth.js';
 import { authMiddleware } from './middleware/auth.js';
 
@@ -37,6 +38,7 @@ app.use('/api/sonarr', sonarrRouter);
 app.use('/api/radarr', radarrRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/jellyseerr', jellyseerrRouter);
+app.use('/api/plex', plexRouter);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
@@ -53,4 +55,5 @@ app.listen(config.port, () => {
   console.log(`[INFO] Sonarr:     ${config.sonarrUrl || '(not configured)'}`);
   console.log(`[INFO] Radarr:     ${config.radarrUrl || '(not configured)'}`);
   console.log(`[INFO] Jellyseerr: ${config.jellyseerrUrl || '(not configured)'}`);
+  console.log(`[INFO] Plex:       ${config.plexToken ? '(configured)' : '(not configured)'}`);
 });

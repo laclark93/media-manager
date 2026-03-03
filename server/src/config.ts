@@ -16,6 +16,7 @@ export function getConfig(): AppConfig {
     radarrApiKey: settings.radarrApiKey || process.env.RADARR_API_KEY || '',
     jellyseerrUrl: settings.jellyseerrUrl || process.env.JELLYSEERR_URL || '',
     jellyseerrApiKey: settings.jellyseerrApiKey || process.env.JELLYSEERR_API_KEY || '',
+    plexToken: settings.plexToken || process.env.PLEX_TOKEN || '',
     stalenessThresholds: settings.stalenessThresholds || DEFAULT_THRESHOLDS,
     port: parseInt(process.env.PORT || '3000', 10),
   };

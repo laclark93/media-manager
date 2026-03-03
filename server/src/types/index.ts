@@ -5,6 +5,7 @@ export interface Settings {
   radarrApiKey?: string;
   jellyseerrUrl?: string;
   jellyseerrApiKey?: string;
+  plexToken?: string;
   stalenessThresholds?: StalenessThresholds;
   username?: string;
   passwordHash?: string;
@@ -24,6 +25,7 @@ export interface AppConfig {
   radarrApiKey: string;
   jellyseerrUrl: string;
   jellyseerrApiKey: string;
+  plexToken: string;
   stalenessThresholds: StalenessThresholds;
   port: number;
 }

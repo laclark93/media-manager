@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { SettingsData, SettingsSavePayload } from '../../hooks/useSettings';
 import { DEFAULT_THRESHOLDS } from '../../types/common';
 import { useAuth } from '../../hooks/useAuth';
+import { fetchApi } from '../../utils/api';
 import './SettingsForm.css';
 
-type SettingsTab = 'sonarr' | 'radarr' | 'jellyseerr' | 'staleness' | 'security';
+type SettingsTab = 'sonarr' | 'radarr' | 'jellyseerr' | 'plex' | 'staleness' | 'security';
 
 interface SettingsFormProps {
   initialSettings: SettingsData | null;
@@ -12,9 +13,10 @@ interface SettingsFormProps {
   testSonarr: (url: string, apiKey: string) => Promise<boolean>;
   testRadarr: (url: string, apiKey: string) => Promise<boolean>;
   testJellyseerr: (url: string, apiKey: string) => Promise<boolean>;
+  testPlex: (apiKey: string) => Promise<boolean>;
 }
 
-export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, testJellyseerr }: SettingsFormProps) {
+export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, testJellyseerr, testPlex }: SettingsFormProps) {
   const { username, changePassword, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('sonarr');
 
@@ -29,6 +31,15 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
   const [jellyseerrUrl, setJellyseerrUrl] = useState('');
   const [jellyseerrApiKey, setJellyseerrApiKey] = useState('');
   const [jellyseerrApiKeyLocked, setJellyseerrApiKeyLocked] = useState(false);
+
+  const [plexToken, setPlexToken] = useState('');
+  const [plexTokenLocked, setPlexTokenLocked] = useState(false);
+  const [plexTest, setPlexTest] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
+  const [plexSignInOpen, setPlexSignInOpen] = useState(false);
+  const [plexUsername, setPlexUsername] = useState('');
+  const [plexPassword, setPlexPassword] = useState('');
+  const [plexSignInState, setPlexSignInState] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle');
+  const [plexSignInError, setPlexSignInError] = useState('');
 
   const [staleDays, setStaleDays] = useState(DEFAULT_THRESHOLDS.staleDays);
   const [veryStaledays, setVeryStaledays] = useState(DEFAULT_THRESHOLDS.veryStaledays);
@@ -60,6 +71,8 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     setJellyseerrUrl(initialSettings.jellyseerrUrl || '');
     setJellyseerrApiKeyLocked(initialSettings.jellyseerrApiKeySet);
     setJellyseerrApiKey('');
+    setPlexTokenLocked(initialSettings.plexTokenSet);
+    setPlexToken('');
     if (initialSettings.stalenessThresholds) {
       setStaleDays(initialSettings.stalenessThresholds.staleDays);
       setVeryStaledays(initialSettings.stalenessThresholds.veryStaledays);
@@ -96,6 +109,32 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     setJellyseerrTest(ok ? 'ok' : 'fail');
   };
 
+  const handleTestPlex = async () => {
+    setPlexTest('testing');
+    const ok = await testPlex(plexToken);
+    setPlexTest(ok ? 'ok' : 'fail');
+  };
+
+  const handlePlexSignIn = async () => {
+    setPlexSignInState('loading');
+    setPlexSignInError('');
+    try {
+      const result = await fetchApi<{ token: string }>('/api/plex/signin', {
+        method: 'POST',
+        body: JSON.stringify({ username: plexUsername, password: plexPassword }),
+      });
+      setPlexToken(result.token);
+      setPlexTokenLocked(false);
+      setPlexSignInState('ok');
+      setPlexSignInOpen(false);
+      setPlexUsername('');
+      setPlexPassword('');
+    } catch (err) {
+      setPlexSignInState('fail');
+      setPlexSignInError(err instanceof Error ? err.message : 'Sign in failed');
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
@@ -108,12 +147,14 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     if (sonarrApiKey) payload.sonarrApiKey = sonarrApiKey;
     if (radarrApiKey) payload.radarrApiKey = radarrApiKey;
     if (jellyseerrApiKey) payload.jellyseerrApiKey = jellyseerrApiKey;
+    if (plexToken) payload.plexToken = plexToken;
     await onSave(payload);
     setSaving(false);
     setSaved(true);
     if (sonarrApiKey) { setSonarrApiKey(''); setSonarrApiKeyLocked(true); }
     if (radarrApiKey) { setRadarrApiKey(''); setRadarrApiKeyLocked(true); }
     if (jellyseerrApiKey) { setJellyseerrApiKey(''); setJellyseerrApiKeyLocked(true); }
+    if (plexToken) { setPlexToken(''); setPlexTokenLocked(true); }
     setTimeout(() => setSaved(false), 3000);
   };
 
@@ -141,6 +182,7 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     { id: 'sonarr', label: 'Sonarr' },
     { id: 'radarr', label: 'Radarr' },
     { id: 'jellyseerr', label: 'Jellyseerr' },
+    { id: 'plex', label: 'Plex' },
     { id: 'staleness', label: 'Staleness' },
     { id: 'security', label: 'Security' },
   ];
@@ -255,6 +297,69 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
           </button>
           {jellyseerrTest === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Connected</span>}
           {jellyseerrTest === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
+        </div>
+      )}
+
+      {activeTab === 'plex' && (
+        <div className="settings-form__section">
+          <p className="settings-form__hint">Optional — enables &quot;Open in Plex&quot; links on subtitle cards.</p>
+          <div className="settings-form__field">
+            <label>Token</label>
+            <input
+              type="password"
+              value={plexTokenLocked ? '••••••••••••••••' : plexToken}
+              readOnly={plexTokenLocked}
+              className={plexTokenLocked ? 'settings-form__input--locked' : ''}
+              placeholder="Your Plex token"
+              onFocus={() => { if (plexTokenLocked) { setPlexTokenLocked(false); setPlexToken(''); } }}
+              onBlur={() => { if (!plexToken && initialSettings.plexTokenSet) setPlexTokenLocked(true); }}
+              onChange={(e) => setPlexToken(e.target.value)}
+            />
+          </div>
+          <button
+            className="settings-form__signin-toggle"
+            onClick={() => setPlexSignInOpen(o => !o)}
+          >
+            {plexSignInOpen ? '▾' : '▸'} Sign in to get token
+          </button>
+          {plexSignInOpen && (
+            <div className="settings-form__signin-section">
+              <div className="settings-form__field">
+                <label>Plex Username / Email</label>
+                <input
+                  type="text"
+                  value={plexUsername}
+                  onChange={(e) => setPlexUsername(e.target.value)}
+                  placeholder="your@email.com"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="settings-form__field">
+                <label>Plex Password</label>
+                <input
+                  type="password"
+                  value={plexPassword}
+                  onChange={(e) => setPlexPassword(e.target.value)}
+                  placeholder="Your Plex password"
+                  autoComplete="off"
+                />
+              </div>
+              <button
+                className="settings-form__test-btn"
+                onClick={handlePlexSignIn}
+                disabled={plexSignInState === 'loading' || !plexUsername || !plexPassword}
+              >
+                {plexSignInState === 'loading' ? 'Signing in...' : 'Sign In'}
+              </button>
+              {plexSignInState === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Token retrieved!</span>}
+              {plexSignInState === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">{plexSignInError || 'Failed'}</span>}
+            </div>
+          )}
+          <button className="settings-form__test-btn" onClick={handleTestPlex} disabled={plexTest === 'testing'} style={{ marginTop: 12 }}>
+            {plexTest === 'testing' ? 'Testing...' : 'Test Connection'}
+          </button>
+          {plexTest === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Connected</span>}
+          {plexTest === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
         </div>
       )}
 

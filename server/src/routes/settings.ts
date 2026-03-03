@@ -4,6 +4,7 @@ import { readSettings, writeSettings } from '../settings.js';
 import * as sonarrService from '../services/sonarr.js';
 import * as radarrService from '../services/radarr.js';
 import * as jellyseerrService from '../services/jellyseerr.js';
+import * as plexService from '../services/plex.js';
 import { Settings } from '../types/index.js';
 
 const router = Router();
@@ -21,11 +22,13 @@ router.get('/', (_req, res) => {
     sonarrConfigured: !!(config.sonarrUrl && config.sonarrApiKey),
     radarrConfigured: !!(config.radarrUrl && config.radarrApiKey),
     jellyseerrConfigured: !!(config.jellyseerrUrl && config.jellyseerrApiKey),
+    plexTokenSet: !!config.plexToken,
+    plexConfigured: !!config.plexToken,
   });
 });
 
 router.put('/', (req, res) => {
-  const { sonarrUrl, sonarrApiKey, radarrUrl, radarrApiKey, jellyseerrUrl, jellyseerrApiKey, stalenessThresholds } = req.body as Settings;
+  const { sonarrUrl, sonarrApiKey, radarrUrl, radarrApiKey, jellyseerrUrl, jellyseerrApiKey, plexToken, stalenessThresholds } = req.body as Settings;
   const current = readSettings();
   const updated: Settings = {
     ...current,
@@ -36,6 +39,7 @@ router.put('/', (req, res) => {
     radarrApiKey: radarrApiKey || current.radarrApiKey,
     jellyseerrUrl: jellyseerrUrl ?? current.jellyseerrUrl,
     jellyseerrApiKey: jellyseerrApiKey || current.jellyseerrApiKey,
+    plexToken: plexToken || current.plexToken,
     stalenessThresholds: stalenessThresholds ?? current.stalenessThresholds,
   };
   writeSettings(updated);
@@ -72,6 +76,17 @@ router.post('/test/jellyseerr', async (req, res) => {
     return;
   }
   const ok = await jellyseerrService.testConnection(url, effectiveKey);
+  res.json({ success: ok });
+});
+
+router.post('/test/plex', async (req, res) => {
+  const { apiKey } = req.body;
+  const effectiveKey = apiKey || getConfig().plexToken;
+  if (!effectiveKey) {
+    res.status(400).json({ error: 'Token required' });
+    return;
+  }
+  const ok = await plexService.testConnection(effectiveKey);
   res.json({ success: ok });
 });
 

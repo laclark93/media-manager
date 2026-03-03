@@ -10,6 +10,7 @@ interface SubtitleMissingCardProps {
   item: SubtitleMissing;
   sonarrUrl?: string;
   radarrUrl?: string;
+  plexConfigured?: boolean;
   onIgnore?: () => void;
 }
 
@@ -95,7 +96,7 @@ function MovieFileRow({ fileId, movieId, onDone }: { fileId: number; movieId: nu
   );
 }
 
-export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore }: SubtitleMissingCardProps) {
+export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, plexConfigured, onIgnore }: SubtitleMissingCardProps) {
   const [imgSrc, setImgSrc] = useState(item.remotePosterUrl || item.posterUrl || '');
   const [imgFailed, setImgFailed] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
@@ -105,6 +106,8 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore }: Su
   const [countdown, setCountdown] = useState(UNDO_SECONDS);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [plexUrl, setPlexUrl] = useState<string | null>(null);
+  const [plexLoading, setPlexLoading] = useState(false);
 
   const startIgnore = () => {
     setPendingIgnore(true);
@@ -136,6 +139,28 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore }: Su
     if (!imgFailed && item.posterUrl && imgSrc !== item.posterUrl) {
       setImgSrc(item.posterUrl);
       setImgFailed(true);
+    }
+  };
+
+  const handleOpenInPlex = async () => {
+    if (plexUrl) {
+      window.open(plexUrl, '_blank');
+      return;
+    }
+    setPlexLoading(true);
+    try {
+      const plexType = item.service === 'sonarr' ? 'show' : 'movie';
+      const params = new URLSearchParams({ title: item.title, type: plexType });
+      if (item.year) params.set('year', String(item.year));
+      const result = await fetchApi<{ url: string | null }>(`/api/plex/web-url?${params}`);
+      if (result.url) {
+        setPlexUrl(result.url);
+        window.open(result.url, '_blank');
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setPlexLoading(false);
     }
   };
 
@@ -219,6 +244,16 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore }: Su
             <a className="amcard__btn amcard__btn--open" href={openUrl} target="_blank" rel="noreferrer" title={`Open in ${openServiceLabel}`}>
               Open in {openServiceLabel} ↗
             </a>
+          )}
+          {plexConfigured && (
+            <button
+              className="amcard__btn amcard__btn--open"
+              onClick={handleOpenInPlex}
+              disabled={plexLoading}
+              title="Open in Plex"
+            >
+              {plexLoading ? 'Loading...' : 'Open in Plex ↗'}
+            </button>
           )}
           {onIgnore && (
             <button

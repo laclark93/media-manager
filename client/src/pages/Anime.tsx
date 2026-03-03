@@ -106,6 +106,7 @@ interface SubtitleSectionProps {
   ignoredItems?: SubtitleMissing[];
   sonarrUrl: string;
   radarrUrl: string;
+  plexConfigured?: boolean;
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
@@ -114,7 +115,7 @@ interface SubtitleSectionProps {
   defaultOpen?: boolean;
 }
 
-function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, loading, error, onRefresh, onIgnore, onRestore, defaultOpen = true }: SubtitleSectionProps) {
+function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfigured, loading, error, onRefresh, onIgnore, onRestore, defaultOpen = true }: SubtitleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [sortBy, setSortBy] = useState<SubtitleSort>('missing');
   const [sortAsc, setSortAsc] = useState(false);
@@ -189,6 +190,7 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, loading, e
                     item={item}
                     sonarrUrl={sonarrUrl}
                     radarrUrl={radarrUrl}
+                    plexConfigured={plexConfigured}
                     onIgnore={onIgnore ? () => onIgnore(key) : undefined}
                   />
                 );
@@ -286,6 +288,7 @@ export function Anime() {
         ignoredItems={ignoredSubItems}
         sonarrUrl={sonarrUrl}
         radarrUrl={radarrUrl}
+        plexConfigured={settings?.plexConfigured}
         loading={subLoading}
         error={subError}
         onRefresh={subRefresh}

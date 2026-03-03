@@ -13,6 +13,8 @@ export interface SettingsData {
   sonarrConfigured: boolean;
   radarrConfigured: boolean;
   jellyseerrConfigured: boolean;
+  plexTokenSet: boolean;
+  plexConfigured: boolean;
 }
 
 export interface SettingsSavePayload {
@@ -22,6 +24,7 @@ export interface SettingsSavePayload {
   radarrApiKey?: string;
   jellyseerrUrl?: string;
   jellyseerrApiKey?: string;
+  plexToken?: string;
   stalenessThresholds?: StalenessThresholds;
 }
 
@@ -80,5 +83,13 @@ export function useSettings() {
     return result.success;
   }, []);
 
-  return { settings, loading, error, refresh, save, testSonarr, testRadarr, testJellyseerr };
+  const testPlex = useCallback(async (apiKey: string): Promise<boolean> => {
+    const result = await fetchApi<{ success: boolean }>('/api/settings/test/plex', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    });
+    return result.success;
+  }, []);
+
+  return { settings, loading, error, refresh, save, testSonarr, testRadarr, testJellyseerr, testPlex };
 }
