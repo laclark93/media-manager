@@ -2,6 +2,7 @@ import { useJellyseerr } from '../hooks/useJellyseerr';
 import { useSettings } from '../hooks/useSettings';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { IssueCard } from '../components/IssueCard/IssueCard';
+import { fetchApi } from '../utils/api';
 
 export function Issues() {
   const { issues, loading, error, searchIssue, resolveIssue, reopenIssue, dismissIssue } = useJellyseerr();
@@ -65,6 +66,31 @@ export function Issues() {
                 catch { updateEntry(eid, 'error', 'Failed'); throw new Error('reopen failed'); }
               }}
               onDismiss={() => dismissIssue(issue.id)}
+              onMarkFailed={issue.externalServiceId ? async () => {
+                const title = issue.mediaTitle || `Issue #${issue.id}`;
+                const eid = addEntry('Mark As Failed', title);
+                try {
+                  if (issue.media.mediaType === 'tv') {
+                    await fetchApi('/api/sonarr/mark-episode-failed', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        seriesId: issue.externalServiceId,
+                        seasonNumber: issue.problemSeason || undefined,
+                        episodeNumber: issue.problemEpisode || undefined,
+                      }),
+                    });
+                  } else {
+                    await fetchApi('/api/radarr/mark-movie-failed', {
+                      method: 'POST',
+                      body: JSON.stringify({ movieId: issue.externalServiceId }),
+                    });
+                  }
+                  updateEntry(eid, 'success', 'Queued');
+                } catch {
+                  updateEntry(eid, 'error', 'Failed');
+                  throw new Error('mark failed');
+                }
+              } : undefined}
             />
           ))}
         </div>

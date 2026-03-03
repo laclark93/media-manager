@@ -252,6 +252,77 @@ router.post('/mark-failed', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/sonarr/mark-episode-failed — lookup episode by season/episode, mark failed, delete, search
+router.post('/mark-episode-failed', async (req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.sonarrUrl || !config.sonarrApiKey) {
+      res.status(400).json({ error: 'Sonarr not configured' });
+      return;
+    }
+    const { seriesId, seasonNumber, episodeNumber } = req.body as {
+      seriesId: number;
+      seasonNumber?: number;
+      episodeNumber?: number;
+    };
+    if (!seriesId) {
+      res.status(400).json({ error: 'seriesId is required' });
+      return;
+    }
+
+    // Find matching episodes with files
+    const episodes = await sonarrService.getEpisodes(config.sonarrUrl, config.sonarrApiKey, seriesId);
+    let targets = episodes.filter(ep => ep.hasFile && ep.episodeFileId);
+    if (seasonNumber != null) targets = targets.filter(ep => ep.seasonNumber === seasonNumber);
+    if (episodeNumber != null) targets = targets.filter(ep => ep.episodeNumber === episodeNumber);
+
+    if (targets.length === 0) {
+      res.status(404).json({ error: 'No matching episode files found' });
+      return;
+    }
+
+    // Get history for blocklisting
+    const history = await sonarrService.getSeriesHistory(config.sonarrUrl, config.sonarrApiKey, seriesId);
+    let blocklisted = 0;
+    let deleted = 0;
+
+    for (const ep of targets) {
+      // Blocklist via history
+      const grabRecord = history
+        .filter(h => h.episodeId === ep.id && h.eventType === 'grabbed')
+        .sort((a, b) => b.id - a.id)[0];
+      if (grabRecord) {
+        try {
+          await sonarrService.markHistoryFailed(config.sonarrUrl, config.sonarrApiKey, grabRecord.id);
+          blocklisted++;
+          console.log(`[INFO] Marked history ${grabRecord.id} as failed for episode ${ep.id}`);
+        } catch (err) {
+          console.log(`[WARN] Could not blocklist episode ${ep.id}:`, err instanceof Error ? err.message : err);
+        }
+      }
+
+      // Delete the file
+      try {
+        await sonarrService.deleteEpisodeFile(config.sonarrUrl, config.sonarrApiKey, ep.episodeFileId!);
+        deleted++;
+        console.log(`[INFO] Deleted episode file ${ep.episodeFileId}`);
+      } catch (err) {
+        console.log(`[WARN] Could not delete episode file ${ep.episodeFileId}:`, err instanceof Error ? err.message : err);
+      }
+    }
+
+    // Search for replacements
+    const episodeIds = targets.map(ep => ep.id);
+    await sonarrService.searchEpisodes(config.sonarrUrl, config.sonarrApiKey, episodeIds);
+    console.log(`[INFO] Triggered EpisodeSearch for ${episodeIds.length} episodes`);
+
+    res.json({ success: true, blocklisted, deleted, searched: episodeIds.length });
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
 router.get('/image/*', async (req: Request, res: Response) => {
   try {
     const config = getConfig();

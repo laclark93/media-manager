@@ -195,6 +195,57 @@ router.post('/mark-failed', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/radarr/mark-movie-failed — lookup movie files, mark failed, delete, search
+router.post('/mark-movie-failed', async (req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.radarrUrl || !config.radarrApiKey) {
+      res.status(400).json({ error: 'Radarr not configured' });
+      return;
+    }
+    const { movieId } = req.body as { movieId: number };
+    if (!movieId) {
+      res.status(400).json({ error: 'movieId is required' });
+      return;
+    }
+
+    const files = await radarrService.getMovieFiles(config.radarrUrl, config.radarrApiKey, movieId);
+    if (files.length === 0) {
+      res.status(404).json({ error: 'No movie files found' });
+      return;
+    }
+
+    // Blocklist via history
+    const history = await radarrService.getMovieHistory(config.radarrUrl, config.radarrApiKey, movieId);
+    const grabRecord = history
+      .filter(h => h.eventType === 'grabbed')
+      .sort((a, b) => b.id - a.id)[0];
+    if (grabRecord) {
+      try {
+        await radarrService.markHistoryFailed(config.radarrUrl, config.radarrApiKey, grabRecord.id);
+        console.log(`[INFO] Marked history ${grabRecord.id} as failed for movie ${movieId}`);
+      } catch (err) {
+        console.log(`[WARN] Could not blocklist movie ${movieId}:`, err instanceof Error ? err.message : err);
+      }
+    }
+
+    // Delete all movie files
+    for (const f of files) {
+      await radarrService.deleteMovieFile(config.radarrUrl, config.radarrApiKey, f.id);
+      console.log(`[INFO] Deleted movie file ${f.id}`);
+    }
+
+    // Search for replacement
+    await radarrService.searchMovie(config.radarrUrl, config.radarrApiKey, [movieId]);
+    console.log(`[INFO] Triggered MoviesSearch for movie ${movieId}`);
+
+    res.json({ success: true });
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
 router.get('/image/*', async (req: Request, res: Response) => {
   try {
     const config = getConfig();

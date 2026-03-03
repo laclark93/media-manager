@@ -33,7 +33,7 @@ export function Settings() {
         testPlex={testPlex}
       />
       <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: 32 }}>
-        v1.4.3
+        v1.4.4
       </p>
     </div>
   );

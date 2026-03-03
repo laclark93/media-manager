@@ -12,11 +12,13 @@ interface IssueCardProps {
   onResolve: () => Promise<void>;
   onUndo: () => Promise<void>;
   onDismiss: () => void;
+  onMarkFailed?: () => Promise<void>;
 }
 
-export function IssueCard({ issue, sonarrUrl, radarrUrl, onSearch, onResolve, onUndo, onDismiss }: IssueCardProps) {
+export function IssueCard({ issue, sonarrUrl, radarrUrl, onSearch, onResolve, onUndo, onDismiss, onMarkFailed }: IssueCardProps) {
   const [searchState, setSearchState] = useState<'idle' | 'searching' | 'queued'>('idle');
   const [resolveState, setResolveState] = useState<'idle' | 'resolving' | 'resolved' | 'undoing'>('idle');
+  const [markFailedState, setMarkFailedState] = useState<'idle' | 'working' | 'done' | 'error'>('idle');
   const [countdown, setCountdown] = useState(UNDO_SECONDS);
   const [imgSrc, setImgSrc] = useState(issue.remotePosterUrl || issue.posterUrl || '');
   const [imgError, setImgError] = useState(false);
@@ -62,6 +64,18 @@ export function IssueCard({ issue, sonarrUrl, radarrUrl, onSearch, onResolve, on
       setResolveState('resolved');
     } catch {
       setResolveState('idle');
+    }
+  };
+
+  const handleMarkFailed = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onMarkFailed || markFailedState !== 'idle') return;
+    setMarkFailedState('working');
+    try {
+      await onMarkFailed();
+      setMarkFailedState('done');
+    } catch {
+      setMarkFailedState('error');
     }
   };
 
@@ -170,6 +184,16 @@ export function IssueCard({ issue, sonarrUrl, radarrUrl, onSearch, onResolve, on
               <button className={searchBtnClass} onClick={handleSearch} disabled={searchState !== 'idle'}>
                 {searchState === 'searching' ? 'Searching...' : searchState === 'queued' ? 'Queued' : 'Search'}
               </button>
+              {onMarkFailed && (
+                <button
+                  className={`issue-card__btn ${markFailedState === 'done' ? 'issue-card__btn--queued' : 'issue-card__btn--mark-failed'}`}
+                  onClick={handleMarkFailed}
+                  disabled={markFailedState !== 'idle'}
+                  title="Mark existing file as failed, blocklist it, and search for a replacement"
+                >
+                  {markFailedState === 'working' ? '...' : markFailedState === 'done' ? 'Queued' : markFailedState === 'error' ? 'Retry' : 'Mark As Failed'}
+                </button>
+              )}
               <button
                 className={`issue-card__btn ${resolveState === 'resolving' ? 'issue-card__btn--resolving' : 'issue-card__btn--resolve'}`}
                 onClick={handleResolve}
