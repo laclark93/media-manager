@@ -24,12 +24,12 @@
 }
 
 .anime-page__section-toggle {
-  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
   min-width: 0;
+  flex-shrink: 1;
 }
 
 .anime-page__section-toggle:hover ~ .anime-page__section-refresh,
@@ -101,6 +101,7 @@
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .anime-page__sort-btn {
