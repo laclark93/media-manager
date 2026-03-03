@@ -7,6 +7,7 @@ import { useIgnoredSubtitles } from '../hooks/useIgnoredSubtitles';
 import { AnimeMismatch, SubtitleMissing } from '../types/anime';
 import { AnimeMismatchCard } from '../components/AnimeMismatchCard/AnimeMismatchCard';
 import { SubtitleMissingCard } from '../components/SubtitleMissingCard/SubtitleMissingCard';
+import { SubtitleModal } from '../components/SubtitleModal/SubtitleModal';
 import './Anime.css';
 
 interface MismatchSectionProps {
@@ -120,6 +121,7 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
   const [sortBy, setSortBy] = useState<SubtitleSort>('missing');
   const [sortAsc, setSortAsc] = useState(false);
   const [showIgnored, setShowIgnored] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<SubtitleMissing | null>(null);
 
   const sorted = [...items].sort((a, b) => {
     let cmp: number;
@@ -190,8 +192,8 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
                     item={item}
                     sonarrUrl={sonarrUrl}
                     radarrUrl={radarrUrl}
-                    plexConfigured={plexConfigured}
                     onIgnore={onIgnore ? () => onIgnore(key) : undefined}
+                    onCardClick={() => setSelectedItem(item)}
                   />
                 );
               })}
@@ -227,6 +229,15 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
             </div>
           )}
         </>
+      )}
+      {selectedItem && (
+        <SubtitleModal
+          item={selectedItem}
+          sonarrUrl={sonarrUrl}
+          radarrUrl={radarrUrl}
+          plexConfigured={plexConfigured}
+          onClose={() => setSelectedItem(null)}
+        />
       )}
     </section>
   );
