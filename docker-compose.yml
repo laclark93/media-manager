@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  missing-media:
+    build: .
+    container_name: missing-media-dashboard
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      - PORT=${PORT:-3000}
+      - SONARR_URL=http://sonarr:8989
+      - SONARR_API_KEY=your-sonarr-api-key
+      - RADARR_URL=http://radarr:7878
+      - RADARR_API_KEY=your-radarr-api-key
+    volumes:
+      - ./data:/config
+    restart: unless-stopped

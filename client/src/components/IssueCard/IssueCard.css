@@ -1,0 +1,222 @@
+.issue-card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.3s;
+}
+
+.issue-card:hover:not(.issue-card--resolved) {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.issue-card--resolved {
+  opacity: 0.55;
+}
+
+.issue-card__poster-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  background: var(--bg-secondary);
+}
+
+.issue-card__poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.issue-card__poster-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.issue-card__type-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: white;
+  letter-spacing: 0.5px;
+}
+
+.issue-card__media-type {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  letter-spacing: 0.5px;
+}
+
+.issue-card__info {
+  padding: 8px 10px 10px;
+}
+
+.issue-card__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.issue-card__year {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.issue-card__episode {
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.issue-card__description {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.issue-card__reporter {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.issue-card__date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.issue-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.issue-card__resolved-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--success);
+  flex: 1;
+}
+
+.issue-card__btn {
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.issue-card__btn--search {
+  background: var(--accent);
+  color: white;
+}
+
+.issue-card__btn--search:hover {
+  background: var(--accent-hover);
+}
+
+.issue-card__btn--searching {
+  background: var(--accent);
+  color: white;
+  opacity: 0.7;
+  cursor: default;
+}
+
+.issue-card__btn--queued {
+  background: var(--success);
+  color: white;
+  cursor: default;
+}
+
+.issue-card__btn--resolve {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.issue-card__btn--resolve:hover {
+  background: var(--success);
+  color: white;
+  border-color: var(--success);
+}
+
+.issue-card__btn--resolving {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  opacity: 0.7;
+  cursor: default;
+  border: 1px solid var(--border);
+}
+
+.issue-card__btn--undo {
+  background: var(--warning);
+  color: white;
+  flex: 0 0 auto;
+}
+
+.issue-card__btn--undo:hover:not(:disabled) {
+  background: #e08e0b;
+}
+
+.issue-card__btn--undo:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.issue-card__btn--open {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.issue-card__btn--open:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}

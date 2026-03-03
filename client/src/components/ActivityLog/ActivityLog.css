@@ -1,0 +1,129 @@
+.activity-log {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 24px;
+}
+
+.activity-log__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+
+.activity-log__header:hover {
+  background: var(--bg-hover);
+  border-radius: 8px 8px 0 0;
+}
+
+.activity-log__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.activity-log__toggle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.activity-log__count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
+.activity-log__body {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.activity-log__empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.activity-log__entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(51, 51, 80, 0.3);
+  font-size: 0.82rem;
+}
+
+.activity-log__entry:last-child {
+  border-bottom: none;
+}
+
+.activity-log__status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.activity-log__status--pending {
+  background: var(--warning);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.activity-log__status--success {
+  background: var(--success);
+}
+
+.activity-log__status--error {
+  background: var(--danger);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.activity-log__time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  min-width: 65px;
+  flex-shrink: 0;
+}
+
+.activity-log__action {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.activity-log__target {
+  color: var(--text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-log__message {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Mobile ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .activity-log__entry {
+    flex-wrap: wrap;
+    gap: 3px 8px;
+    padding: 8px 12px;
+  }
+
+  .activity-log__message {
+    margin-left: 0;
+    width: 100%;
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "sonarrUrl": "https://sonarr.clarkserver.net",
+  "sonarrApiKey": "fd95910b35ce4ac69bee2978b036ab0d",
+  "radarrUrl": "https://radarr.clarkserver.net",
+  "radarrApiKey": "965a1b76c3ba45d2a0e1e60b4c6d7e9b",
+  "stalenessThresholds": {
+    "staleDays": 7,
+    "veryStaledays": 28,
+    "ancientDays": 90
+  },
+  "jellyseerrUrl": "https://requests.clarkserver.net",
+  "jellyseerrApiKey": "MTcyNDQ3NTAyMTQ2MjE5ODg2MGEzLWViNTYtNDI4YS04ZTYyLTU5ZTI3YzMzODc0Mg=="
+}

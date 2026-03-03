@@ -1,0 +1,78 @@
+import { Router } from 'express';
+import { getConfig } from '../config.js';
+import { readSettings, writeSettings } from '../settings.js';
+import * as sonarrService from '../services/sonarr.js';
+import * as radarrService from '../services/radarr.js';
+import * as jellyseerrService from '../services/jellyseerr.js';
+import { Settings } from '../types/index.js';
+
+const router = Router();
+
+router.get('/', (_req, res) => {
+  const config = getConfig();
+  res.json({
+    sonarrUrl: config.sonarrUrl,
+    sonarrApiKeySet: !!config.sonarrApiKey,
+    radarrUrl: config.radarrUrl,
+    radarrApiKeySet: !!config.radarrApiKey,
+    jellyseerrUrl: config.jellyseerrUrl,
+    jellyseerrApiKeySet: !!config.jellyseerrApiKey,
+    stalenessThresholds: config.stalenessThresholds,
+    sonarrConfigured: !!(config.sonarrUrl && config.sonarrApiKey),
+    radarrConfigured: !!(config.radarrUrl && config.radarrApiKey),
+    jellyseerrConfigured: !!(config.jellyseerrUrl && config.jellyseerrApiKey),
+  });
+});
+
+router.put('/', (req, res) => {
+  const { sonarrUrl, sonarrApiKey, radarrUrl, radarrApiKey, jellyseerrUrl, jellyseerrApiKey, stalenessThresholds } = req.body as Settings;
+  const current = readSettings();
+  const updated: Settings = {
+    ...current,
+    sonarrUrl: sonarrUrl ?? current.sonarrUrl,
+    // Only update API keys when a non-empty value is provided; empty means "keep existing"
+    sonarrApiKey: sonarrApiKey || current.sonarrApiKey,
+    radarrUrl: radarrUrl ?? current.radarrUrl,
+    radarrApiKey: radarrApiKey || current.radarrApiKey,
+    jellyseerrUrl: jellyseerrUrl ?? current.jellyseerrUrl,
+    jellyseerrApiKey: jellyseerrApiKey || current.jellyseerrApiKey,
+    stalenessThresholds: stalenessThresholds ?? current.stalenessThresholds,
+  };
+  writeSettings(updated);
+  res.json({ success: true });
+});
+
+router.post('/test/sonarr', async (req, res) => {
+  const { url, apiKey } = req.body;
+  const effectiveKey = apiKey || getConfig().sonarrApiKey;
+  if (!url || !effectiveKey) {
+    res.status(400).json({ error: 'URL and API key required' });
+    return;
+  }
+  const ok = await sonarrService.testConnection(url, effectiveKey);
+  res.json({ success: ok });
+});
+
+router.post('/test/radarr', async (req, res) => {
+  const { url, apiKey } = req.body;
+  const effectiveKey = apiKey || getConfig().radarrApiKey;
+  if (!url || !effectiveKey) {
+    res.status(400).json({ error: 'URL and API key required' });
+    return;
+  }
+  const ok = await radarrService.testConnection(url, effectiveKey);
+  res.json({ success: ok });
+});
+
+router.post('/test/jellyseerr', async (req, res) => {
+  const { url, apiKey } = req.body;
+  const effectiveKey = apiKey || getConfig().jellyseerrApiKey;
+  if (!url || !effectiveKey) {
+    res.status(400).json({ error: 'URL and API key required' });
+    return;
+  }
+  const ok = await jellyseerrService.testConnection(url, effectiveKey);
+  res.json({ success: ok });
+});
+
+export default router;

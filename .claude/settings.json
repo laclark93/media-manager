@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat \"D:/Program Files \\(x86\\)/Turn Up/resources/app/package.json\")",
+      "Bash(cat \"D:/Program Files \\(x86\\)/Turn Up/TurnUpConfig.json\")",
+      "Bash(wc -l \"D:/Program Files \\(x86\\)/Turn Up/resources/app/electron.js\")",
+      "Bash(ls -la \"D:/Program Files \\(x86\\)/Turn Up/service/\")",
+      "Bash(gh repo list --limit 5 --json name,url)"
+    ]
+  }
+}
