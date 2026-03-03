@@ -184,6 +184,25 @@ export function IssueCard({ issue, sonarrUrl, radarrUrl, onSearch, onResolve, on
               <button className={searchBtnClass} onClick={handleSearch} disabled={searchState !== 'idle'}>
                 {searchState === 'searching' ? 'Searching...' : searchState === 'queued' ? 'Queued' : 'Search'}
               </button>
+              <button
+                className={`issue-card__btn ${resolveState === 'resolving' ? 'issue-card__btn--resolving' : 'issue-card__btn--resolve'}`}
+                onClick={handleResolve}
+                disabled={resolveState === 'resolving'}
+              >
+                {resolveState === 'resolving' ? 'Resolving...' : 'Resolve'}
+              </button>
+              {openUrl && (
+                <a
+                  className="issue-card__btn issue-card__btn--open"
+                  href={openUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={openLabel}
+                >
+                  ↗
+                </a>
+              )}
               {onMarkFailed && (
                 <button
                   className={`issue-card__btn ${markFailedState === 'done' ? 'issue-card__btn--queued' : 'issue-card__btn--mark-failed'}`}
@@ -194,26 +213,7 @@ export function IssueCard({ issue, sonarrUrl, radarrUrl, onSearch, onResolve, on
                   {markFailedState === 'working' ? '...' : markFailedState === 'done' ? 'Queued' : markFailedState === 'error' ? 'Retry' : 'Mark As Failed'}
                 </button>
               )}
-              <button
-                className={`issue-card__btn ${resolveState === 'resolving' ? 'issue-card__btn--resolving' : 'issue-card__btn--resolve'}`}
-                onClick={handleResolve}
-                disabled={resolveState === 'resolving'}
-              >
-                {resolveState === 'resolving' ? 'Resolving...' : 'Resolve'}
-              </button>
             </>
-          )}
-          {openUrl && (
-            <a
-              className="issue-card__btn issue-card__btn--open"
-              href={openUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              title={openLabel}
-            >
-              ↗
-            </a>
           )}
         </div>
       </div>

@@ -123,6 +123,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .issue-card__resolved-label {
@@ -203,6 +204,7 @@
 .issue-card__btn--mark-failed {
   background: var(--danger);
   color: white;
+  flex: 1 1 100%;
 }
 
 .issue-card__btn--mark-failed:hover {
