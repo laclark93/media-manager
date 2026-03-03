@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#1e1e2e"/>
+  <g fill="none" stroke="#3498db" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- film strip -->
+    <rect x="12" y="10" width="40" height="44" rx="4" />
+    <line x1="12" y1="20" x2="52" y2="20"/>
+    <line x1="12" y1="44" x2="52" y2="44"/>
+    <!-- sprocket holes top -->
+    <rect x="16" y="13" width="4" height="4" rx="1" fill="#3498db"/>
+    <rect x="24" y="13" width="4" height="4" rx="1" fill="#3498db"/>
+    <rect x="36" y="13" width="4" height="4" rx="1" fill="#3498db"/>
+    <rect x="44" y="13" width="4" height="4" rx="1" fill="#3498db"/>
+    <!-- sprocket holes bottom -->
+    <rect x="16" y="47" width="4" height="4" rx="1" fill="#3498db"/>
+    <rect x="24" y="47" width="4" height="4" rx="1" fill="#3498db"/>
+    <rect x="36" y="47" width="4" height="4" rx="1" fill="#3498db"/>
+    <rect x="44" y="47" width="4" height="4" rx="1" fill="#3498db"/>
+    <!-- question mark (missing) -->
+    <path d="M27 28 Q27 24 32 24 Q37 24 37 28 Q37 31 32 33" stroke="#e74c3c" stroke-width="3.5"/>
+    <circle cx="32" cy="38" r="1.5" fill="#e74c3c" stroke="none"/>
+  </g>
+</svg>
