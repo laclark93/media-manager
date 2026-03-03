@@ -3,6 +3,7 @@ import { useAnimeMismatch } from '../hooks/useAnimeMismatch';
 import { useSubtitleCheck } from '../hooks/useSubtitleCheck';
 import { useSettings } from '../hooks/useSettings';
 import { useIgnoredMismatches } from '../hooks/useIgnoredMismatches';
+import { useIgnoredSubtitles } from '../hooks/useIgnoredSubtitles';
 import { AnimeMismatch, SubtitleMissing } from '../types/anime';
 import { AnimeMismatchCard } from '../components/AnimeMismatchCard/AnimeMismatchCard';
 import { SubtitleMissingCard } from '../components/SubtitleMissingCard/SubtitleMissingCard';
@@ -102,18 +103,22 @@ type SubtitleSort = 'missing' | 'title' | 'year';
 
 interface SubtitleSectionProps {
   items: SubtitleMissing[];
+  ignoredItems?: SubtitleMissing[];
   sonarrUrl: string;
   radarrUrl: string;
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  onIgnore?: (key: string) => void;
+  onRestore?: (key: string) => void;
   defaultOpen?: boolean;
 }
 
-function SubtitleSection({ items, sonarrUrl, radarrUrl, loading, error, onRefresh, defaultOpen = true }: SubtitleSectionProps) {
+function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, loading, error, onRefresh, onIgnore, onRestore, defaultOpen = true }: SubtitleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [sortBy, setSortBy] = useState<SubtitleSort>('missing');
   const [sortAsc, setSortAsc] = useState(false);
+  const [showIgnored, setShowIgnored] = useState(false);
 
   const sorted = [...items].sort((a, b) => {
     let cmp: number;
@@ -140,7 +145,7 @@ function SubtitleSection({ items, sonarrUrl, radarrUrl, loading, error, onRefres
                 className={`anime-page__sort-btn${sortBy === opt ? ' anime-page__sort-btn--active' : ''}`}
                 onClick={() => setSortBy(opt)}
               >
-                {opt === 'missing' ? 'Most Missing' : opt === 'title' ? 'Title' : 'Year'}
+                {opt === 'missing' ? '# Missing' : opt === 'title' ? 'Title' : 'Year'}
               </button>
             ))}
             <button
@@ -176,14 +181,47 @@ function SubtitleSection({ items, sonarrUrl, radarrUrl, loading, error, onRefres
             </p>
           ) : (
             <div className="media-grid">
-              {sorted.map(item => (
-                <SubtitleMissingCard
-                  key={`${item.service}-${item.id}`}
-                  item={item}
-                  sonarrUrl={sonarrUrl}
-                  radarrUrl={radarrUrl}
-                />
-              ))}
+              {sorted.map(item => {
+                const key = `${item.service}-${item.id}`;
+                return (
+                  <SubtitleMissingCard
+                    key={key}
+                    item={item}
+                    sonarrUrl={sonarrUrl}
+                    radarrUrl={radarrUrl}
+                    onIgnore={onIgnore ? () => onIgnore(key) : undefined}
+                  />
+                );
+              })}
+            </div>
+          )}
+          {ignoredItems && ignoredItems.length > 0 && onRestore && (
+            <div className="amcard__ignored-section">
+              <button
+                className="amcard__ignored-toggle"
+                onClick={() => setShowIgnored(o => !o)}
+              >
+                {showIgnored ? '▾' : '▸'} Ignored ({ignoredItems.length})
+              </button>
+              {showIgnored && (
+                <div className="amcard__ignored-list">
+                  {ignoredItems.map(item => {
+                    const key = `${item.service}-${item.id}`;
+                    return (
+                      <span key={key} className="amcard__ignored-chip">
+                        {item.title}
+                        <button
+                          className="amcard__ignored-restore"
+                          onClick={() => onRestore(key)}
+                          title="Restore — show again"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -197,6 +235,7 @@ export function Anime() {
   const { items: subItems, loading: subLoading, error: subError, refresh: subRefresh } = useSubtitleCheck();
   const { settings } = useSettings();
   const { ignoredKeys, ignoreItem, restoreItem } = useIgnoredMismatches();
+  const { ignoredKeys: ignoredSubKeys, ignoreItem: ignoreSubItem, restoreItem: restoreSubItem } = useIgnoredSubtitles();
 
   const sonarrUrl = settings?.sonarrUrl || '';
   const radarrUrl = settings?.radarrUrl || '';
@@ -205,6 +244,9 @@ export function Anime() {
   const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime');
   const visibleWronglyTagged = allWronglyTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}`));
   const ignoredWronglyTagged = allWronglyTagged.filter(i => ignoredKeys.has(`${i.service}-${i.id}`));
+
+  const visibleSubItems = subItems.filter(i => !ignoredSubKeys.has(`${i.service}-${i.id}`));
+  const ignoredSubItems = subItems.filter(i => ignoredSubKeys.has(`${i.service}-${i.id}`));
 
   if (loading) return <div className="page"><div className="loading">Checking anime tags...</div></div>;
 
@@ -240,15 +282,18 @@ export function Anime() {
       )}
 
       <SubtitleSection
-        items={subItems}
+        items={visibleSubItems}
+        ignoredItems={ignoredSubItems}
         sonarrUrl={sonarrUrl}
         radarrUrl={radarrUrl}
         loading={subLoading}
         error={subError}
         onRefresh={subRefresh}
+        onIgnore={ignoreSubItem}
+        onRestore={restoreSubItem}
       />
 
-      {notTagged.length === 0 && visibleWronglyTagged.length === 0 && subItems.length === 0 && !loading && !subLoading && (
+      {notTagged.length === 0 && visibleWronglyTagged.length === 0 && visibleSubItems.length === 0 && !loading && !subLoading && (
         <div className="empty-state">
           <h2>All Good</h2>
           <p>No anime tag mismatches or missing English subtitles found.</p>

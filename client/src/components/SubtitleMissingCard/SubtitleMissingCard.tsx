@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SubtitleMissing, AffectedEpisode } from '../../types/anime';
 import { ProgressBar } from '../ProgressBar/ProgressBar';
 import { fetchApi } from '../../utils/api';
 import '../AnimeMismatchCard/AnimeMismatchCard.css';
 
+const UNDO_SECONDS = 5;
+
 interface SubtitleMissingCardProps {
   item: SubtitleMissing;
   sonarrUrl?: string;
   radarrUrl?: string;
+  onIgnore?: () => void;
 }
 
 type ActionState = 'idle' | 'loading' | 'done' | 'error';
@@ -92,12 +95,42 @@ function MovieFileRow({ fileId, movieId, onDone }: { fileId: number; movieId: nu
   );
 }
 
-export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl }: SubtitleMissingCardProps) {
+export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore }: SubtitleMissingCardProps) {
   const [imgSrc, setImgSrc] = useState(item.remotePosterUrl || item.posterUrl || '');
   const [imgFailed, setImgFailed] = useState(false);
   const [showFiles, setShowFiles] = useState(false);
   const [dismissedFileIds, setDismissedFileIds] = useState<Set<number>>(new Set());
   const [markAllState, setMarkAllState] = useState<ActionState>('idle');
+  const [pendingIgnore, setPendingIgnore] = useState(false);
+  const [countdown, setCountdown] = useState(UNDO_SECONDS);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startIgnore = () => {
+    setPendingIgnore(true);
+    setCountdown(UNDO_SECONDS);
+    intervalRef.current = setInterval(() => {
+      setCountdown(c => c - 1);
+    }, 1000);
+    timerRef.current = setTimeout(() => {
+      clearInterval(intervalRef.current!);
+      onIgnore?.();
+    }, UNDO_SECONDS * 1000);
+  };
+
+  const handleUndo = () => {
+    clearTimeout(timerRef.current!);
+    clearInterval(intervalRef.current!);
+    setPendingIgnore(false);
+    setCountdown(UNDO_SECONDS);
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(timerRef.current!);
+      clearInterval(intervalRef.current!);
+    };
+  }, []);
 
   const handleImgError = () => {
     if (!imgFailed && item.posterUrl && imgSrc !== item.posterUrl) {
@@ -147,7 +180,7 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl }: SubtitleMiss
   };
 
   return (
-    <div className="amcard">
+    <div className={`amcard${pendingIgnore ? ' amcard--pending-ignore' : ''}`}>
       <div className="amcard__poster-wrap">
         {imgSrc && !imgFailed ? (
           <img className="amcard__poster" src={imgSrc} alt={item.title} loading="lazy" onError={handleImgError} />
@@ -166,6 +199,15 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl }: SubtitleMiss
           No Eng Subs
         </span>
       </div>
+
+      {pendingIgnore ? (
+        <div className="amcard__ignore-overlay">
+          <span className="amcard__ignore-label">Marked as false positive</span>
+          <button className="amcard__undo-btn" onClick={handleUndo}>
+            Undo ({countdown}s)
+          </button>
+        </div>
+      ) : (
       <div className="amcard__info">
         <div className="amcard__title" title={item.title}>{item.title}</div>
         {item.year && <div className="amcard__year">{item.year}</div>}
@@ -177,6 +219,15 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl }: SubtitleMiss
             <a className="amcard__btn amcard__btn--open" href={openUrl} target="_blank" rel="noreferrer" title={`Open in ${openServiceLabel}`}>
               Open in {openServiceLabel} ↗
             </a>
+          )}
+          {onIgnore && (
+            <button
+              className="amcard__btn amcard__btn--ignore"
+              onClick={startIgnore}
+              title="Mark as false positive — hide from this list"
+            >
+              Ignore
+            </button>
           )}
         </div>
 
@@ -235,6 +286,7 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl }: SubtitleMiss
           </>
         )}
       </div>
+      )}
     </div>
   );
 }
