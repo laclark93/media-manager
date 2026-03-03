@@ -167,6 +167,22 @@
   cursor: default;
 }
 
+.modal__ep-search--danger {
+  background: var(--danger);
+}
+
+.modal__ep-search--danger:hover {
+  background: #c0392b;
+}
+
+.modal__search-all--danger {
+  background: var(--danger);
+}
+
+.modal__search-all--danger:hover {
+  background: #c0392b;
+}
+
 /* ── Mobile: bottom sheet style ──────────────────────────── */
 @media (max-width: 640px) {
   .modal-overlay {

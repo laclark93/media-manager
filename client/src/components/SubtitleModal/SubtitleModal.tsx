@@ -67,12 +67,12 @@ function EpisodeRow({
         </a>
       )}
       <button
-        className={`modal__ep-search${state === 'done' ? ' modal__search-all--queued' : ''}`}
+        className={`modal__ep-search${state === 'done' ? ' modal__search-all--queued' : ' modal__ep-search--danger'}`}
         disabled={state === 'loading' || state === 'done'}
         onClick={handleMarkFailed}
         title={state === 'done' ? 'Marked as failed' : state === 'error' ? errMsg : 'Mark as failed and search for replacement'}
       >
-        {state === 'loading' ? '...' : state === 'done' ? 'Queued' : state === 'error' ? 'Retry' : 'Mark Failed'}
+        {state === 'loading' ? '...' : state === 'done' ? 'Queued' : state === 'error' ? 'Retry' : 'Mark As Failed'}
       </button>
     </div>
   );
@@ -112,11 +112,11 @@ function MovieFileRow({
       <span className="modal__ep-title">Movie File</span>
       <span className="modal__ep-date" />
       <button
-        className={`modal__ep-search${state === 'done' ? ' modal__search-all--queued' : ''}`}
+        className={`modal__ep-search${state === 'done' ? ' modal__search-all--queued' : ' modal__ep-search--danger'}`}
         disabled={state === 'loading' || state === 'done'}
         onClick={handleMarkFailed}
       >
-        {state === 'loading' ? '...' : state === 'done' ? 'Queued' : state === 'error' ? 'Retry' : 'Mark Failed'}
+        {state === 'loading' ? '...' : state === 'done' ? 'Queued' : state === 'error' ? 'Retry' : 'Mark As Failed'}
       </button>
     </div>
   );
@@ -207,11 +207,11 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
             <div className="modal__title">{item.title} — Missing Eng Subs</div>
             {item.service === 'sonarr' && episodes.length > 1 && (
               <button
-                className={`modal__search-all modal__search-all--${markAllState === 'done' ? 'queued' : markAllState === 'loading' ? 'searching' : 'idle'}`}
+                className={`modal__search-all${markAllState === 'done' ? ' modal__search-all--queued' : markAllState === 'loading' ? ' modal__search-all--searching' : ' modal__search-all--danger'}`}
                 disabled={markAllState === 'loading' || markAllState === 'done'}
                 onClick={handleMarkAll}
               >
-                {markAllState === 'loading' ? 'Working...' : markAllState === 'done' ? 'All Queued' : `Mark All Failed (${episodes.length})`}
+                {markAllState === 'loading' ? 'Working...' : markAllState === 'done' ? 'All Queued' : `Mark All As Failed (${episodes.length})`}
               </button>
             )}
           </div>

@@ -43,10 +43,10 @@ export async function getTags(baseUrl: string, apiKey: string): Promise<ArrTag[]
 }
 
 export async function getMovieHistory(baseUrl: string, apiKey: string, movieId: number): Promise<RadarrHistoryRecord[]> {
-  const resp = await client(baseUrl, apiKey).get('/api/v3/history', {
-    params: { movieId, pageSize: 100 },
+  const resp = await client(baseUrl, apiKey).get('/api/v3/history/movie', {
+    params: { movieId, includeMovie: false },
   });
-  return resp.data.records ?? [];
+  return resp.data ?? [];
 }
 
 export async function markHistoryFailed(baseUrl: string, apiKey: string, historyId: number): Promise<void> {

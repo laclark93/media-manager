@@ -58,10 +58,10 @@ export async function getTags(baseUrl: string, apiKey: string): Promise<ArrTag[]
 }
 
 export async function getSeriesHistory(baseUrl: string, apiKey: string, seriesId: number): Promise<SonarrHistoryRecord[]> {
-  const resp = await client(baseUrl, apiKey).get('/api/v3/history', {
-    params: { seriesId, pageSize: 500 },
+  const resp = await client(baseUrl, apiKey).get('/api/v3/history/series', {
+    params: { seriesId, includeEpisode: false },
   });
-  return resp.data.records ?? [];
+  return resp.data ?? [];
 }
 
 export async function markHistoryFailed(baseUrl: string, apiKey: string, historyId: number): Promise<void> {
