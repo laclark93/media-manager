@@ -90,12 +90,20 @@ export async function testConnection(token: string): Promise<boolean> {
   }
 }
 
-/** Sign in to plex.tv with username/password, returns auth token */
-export async function signIn(username: string, password: string): Promise<string> {
+/** Create a Plex PIN for OAuth popup flow */
+export async function createPin(): Promise<{ id: number; code: string }> {
   const resp = await axios.post(
-    'https://plex.tv/api/v2/users/signin',
-    new URLSearchParams({ login: username, password }),
+    'https://plex.tv/api/v2/pins',
+    new URLSearchParams({ strong: 'true' }),
     { headers: PLEX_HEADERS },
   );
-  return resp.data.authToken;
+  return { id: resp.data.id, code: resp.data.code };
+}
+
+/** Check if a PIN has been claimed (user authenticated), returns token or null */
+export async function checkPin(pinId: number): Promise<string | null> {
+  const resp = await axios.get(`https://plex.tv/api/v2/pins/${pinId}`, {
+    headers: PLEX_HEADERS,
+  });
+  return resp.data.authToken || null;
 }

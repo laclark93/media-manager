@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SettingsData, SettingsSavePayload } from '../../hooks/useSettings';
 import { DEFAULT_THRESHOLDS } from '../../types/common';
 import { useAuth } from '../../hooks/useAuth';
@@ -35,11 +35,9 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
   const [plexToken, setPlexToken] = useState('');
   const [plexTokenLocked, setPlexTokenLocked] = useState(false);
   const [plexTest, setPlexTest] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
-  const [plexSignInOpen, setPlexSignInOpen] = useState(false);
-  const [plexUsername, setPlexUsername] = useState('');
-  const [plexPassword, setPlexPassword] = useState('');
-  const [plexSignInState, setPlexSignInState] = useState<'idle' | 'loading' | 'ok' | 'fail'>('idle');
-  const [plexSignInError, setPlexSignInError] = useState('');
+  const [plexAuthState, setPlexAuthState] = useState<'idle' | 'waiting' | 'ok' | 'fail'>('idle');
+  const plexPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const plexPopupRef = useRef<Window | null>(null);
 
   const [staleDays, setStaleDays] = useState(DEFAULT_THRESHOLDS.staleDays);
   const [veryStaledays, setVeryStaledays] = useState(DEFAULT_THRESHOLDS.veryStaledays);
@@ -115,23 +113,38 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     setPlexTest(ok ? 'ok' : 'fail');
   };
 
-  const handlePlexSignIn = async () => {
-    setPlexSignInState('loading');
-    setPlexSignInError('');
+  const stopPlexPolling = () => {
+    if (plexPollRef.current) { clearInterval(plexPollRef.current); plexPollRef.current = null; }
+    if (plexPopupRef.current && !plexPopupRef.current.closed) { plexPopupRef.current.close(); }
+    plexPopupRef.current = null;
+  };
+
+  const handlePlexOAuth = async () => {
+    setPlexAuthState('waiting');
     try {
-      const result = await fetchApi<{ token: string }>('/api/plex/signin', {
-        method: 'POST',
-        body: JSON.stringify({ username: plexUsername, password: plexPassword }),
-      });
-      setPlexToken(result.token);
-      setPlexTokenLocked(false);
-      setPlexSignInState('ok');
-      setPlexSignInOpen(false);
-      setPlexUsername('');
-      setPlexPassword('');
-    } catch (err) {
-      setPlexSignInState('fail');
-      setPlexSignInError(err instanceof Error ? err.message : 'Sign in failed');
+      const pin = await fetchApi<{ id: number; code: string }>('/api/plex/auth/pin', { method: 'POST' });
+      const authUrl = `https://app.plex.tv/auth#?clientID=missing-media-dashboard&code=${pin.code}&context%5Bdevice%5D%5Bproduct%5D=Missing%20Media%20Dashboard`;
+      plexPopupRef.current = window.open(authUrl, 'plexAuth', 'width=800,height=700');
+
+      plexPollRef.current = setInterval(async () => {
+        try {
+          const result = await fetchApi<{ token: string | null }>(`/api/plex/auth/pin/${pin.id}`);
+          if (result.token) {
+            stopPlexPolling();
+            setPlexToken(result.token);
+            setPlexTokenLocked(false);
+            setPlexAuthState('ok');
+          } else if (plexPopupRef.current?.closed) {
+            stopPlexPolling();
+            setPlexAuthState('idle');
+          }
+        } catch {
+          stopPlexPolling();
+          setPlexAuthState('fail');
+        }
+      }, 2000);
+    } catch {
+      setPlexAuthState('fail');
     }
   };
 
@@ -316,50 +329,29 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
               onChange={(e) => setPlexToken(e.target.value)}
             />
           </div>
-          <button
-            className="settings-form__signin-toggle"
-            onClick={() => setPlexSignInOpen(o => !o)}
-          >
-            {plexSignInOpen ? '▾' : '▸'} Sign in to get token
-          </button>
-          {plexSignInOpen && (
-            <div className="settings-form__signin-section">
-              <div className="settings-form__field">
-                <label>Plex Username / Email</label>
-                <input
-                  type="text"
-                  value={plexUsername}
-                  onChange={(e) => setPlexUsername(e.target.value)}
-                  placeholder="your@email.com"
-                  autoComplete="off"
-                />
-              </div>
-              <div className="settings-form__field">
-                <label>Plex Password</label>
-                <input
-                  type="password"
-                  value={plexPassword}
-                  onChange={(e) => setPlexPassword(e.target.value)}
-                  placeholder="Your Plex password"
-                  autoComplete="off"
-                />
-              </div>
-              <button
-                className="settings-form__test-btn"
-                onClick={handlePlexSignIn}
-                disabled={plexSignInState === 'loading' || !plexUsername || !plexPassword}
-              >
-                {plexSignInState === 'loading' ? 'Signing in...' : 'Sign In'}
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              className="settings-form__test-btn"
+              onClick={handlePlexOAuth}
+              disabled={plexAuthState === 'waiting'}
+            >
+              {plexAuthState === 'waiting' ? 'Waiting for Plex...' : 'Sign in with Plex'}
+            </button>
+            {plexAuthState === 'waiting' && (
+              <button className="settings-form__test-btn" onClick={() => { stopPlexPolling(); setPlexAuthState('idle'); }}>
+                Cancel
               </button>
-              {plexSignInState === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Token retrieved!</span>}
-              {plexSignInState === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">{plexSignInError || 'Failed'}</span>}
-            </div>
-          )}
-          <button className="settings-form__test-btn" onClick={handleTestPlex} disabled={plexTest === 'testing'} style={{ marginTop: 12 }}>
-            {plexTest === 'testing' ? 'Testing...' : 'Test Connection'}
-          </button>
-          {plexTest === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Connected</span>}
-          {plexTest === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
+            )}
+            {plexAuthState === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Token retrieved!</span>}
+            {plexAuthState === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <button className="settings-form__test-btn" onClick={handleTestPlex} disabled={plexTest === 'testing'}>
+              {plexTest === 'testing' ? 'Testing...' : 'Test Connection'}
+            </button>
+            {plexTest === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Connected</span>}
+            {plexTest === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
+          </div>
         </div>
       )}
 

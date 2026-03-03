@@ -37,25 +37,30 @@ router.get('/web-url', async (req, res) => {
   }
 });
 
-// POST /api/plex/signin — get token via Plex credentials
-router.post('/signin', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    res.status(400).json({ error: 'username and password are required' });
+// POST /api/plex/auth/pin — create a Plex PIN for OAuth popup flow
+router.post('/auth/pin', async (_req, res) => {
+  try {
+    const pin = await plexService.createPin();
+    res.json(pin);
+  } catch (err) {
+    console.error('[ERROR] Plex PIN creation failed:', err);
+    res.status(502).json({ error: 'Failed to create Plex PIN' });
+  }
+});
+
+// GET /api/plex/auth/pin/:id — check if PIN has been claimed
+router.get('/auth/pin/:id', async (req, res) => {
+  const pinId = parseInt(req.params.id);
+  if (isNaN(pinId)) {
+    res.status(400).json({ error: 'Invalid PIN ID' });
     return;
   }
-
   try {
-    const token = await plexService.signIn(username, password);
+    const token = await plexService.checkPin(pinId);
     res.json({ token });
-  } catch (err: any) {
-    const status = err?.response?.status;
-    if (status === 401) {
-      res.status(401).json({ error: 'Invalid Plex credentials' });
-    } else {
-      console.error('[ERROR] Plex sign-in failed:', err);
-      res.status(502).json({ error: 'Plex sign-in failed' });
-    }
+  } catch (err) {
+    console.error('[ERROR] Plex PIN check failed:', err);
+    res.status(502).json({ error: 'Failed to check Plex PIN' });
   }
 });
 
