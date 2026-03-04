@@ -1,26 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '../utils/api';
+import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { JellyseerrIssue } from '../types/jellyseerr';
 
+const cache = createCache<JellyseerrIssue[]>();
+
 export function useJellyseerr() {
-  const [issues, setIssues] = useState<JellyseerrIssue[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = cache.get();
+  const [issues, setIssues] = useState<JellyseerrIssue[]>(cached?.data ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (force: boolean) => {
+    if (!force && !cache.isStale()) return;
+    const showSpinner = force || !cache.get();
+    if (showSpinner) setLoading(true);
     setError(null);
     try {
       const data = await fetchApi<JellyseerrIssue[]>('/api/jellyseerr/issues');
+      cache.set(data);
       setIssues(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch issues');
+      if (showSpinner) setError(err instanceof Error ? err.message : 'Failed to fetch issues');
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  const refresh = useCallback(() => fetchData(true), [fetchData]);
+
+  useEffect(() => {
+    fetchData(false);
+    const timer = setInterval(() => fetchData(false), REFRESH_INTERVAL);
+    return () => clearInterval(timer);
+  }, [fetchData]);
 
   const searchIssue = useCallback(async (
     issueId: number,
