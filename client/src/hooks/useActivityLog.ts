@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { fetchApi } from '../utils/api';
 
 export interface LogEntry {
   id: number;
@@ -20,8 +21,32 @@ let nextId = 1;
 
 export const ActivityLogContext = createContext<ActivityLogContextValue | null>(null);
 
+function saveLog(entries: LogEntry[]) {
+  const serialized = entries.map(e => ({ ...e, timestamp: e.timestamp.toISOString() }));
+  fetchApi('/api/persistence/log', {
+    method: 'PUT',
+    body: JSON.stringify(serialized),
+  }).catch(() => {});
+}
+
 export function useActivityLogState() {
   const [entries, setEntries] = useState<LogEntry[]>([]);
+  const isLoadedRef = useRef(false);
+
+  useEffect(() => {
+    fetchApi<{ id: number; timestamp: string; action: string; target: string; status: 'pending' | 'success' | 'error'; message?: string }[]>(
+      '/api/persistence/log'
+    )
+      .then(data => {
+        const parsed: LogEntry[] = data.map(e => ({ ...e, timestamp: new Date(e.timestamp) }));
+        if (parsed.length > 0) {
+          nextId = Math.max(...parsed.map(e => e.id)) + 1;
+        }
+        isLoadedRef.current = true;
+        setEntries(parsed);
+      })
+      .catch(() => { isLoadedRef.current = true; });
+  }, []);
 
   const addEntry = useCallback((action: string, target: string): number => {
     const id = nextId++;
@@ -32,18 +57,25 @@ export function useActivityLogState() {
       target,
       status: 'pending',
     };
-    setEntries(prev => [entry, ...prev].slice(0, 100));
+    setEntries(prev => {
+      const next = [entry, ...prev].slice(0, 100);
+      if (isLoadedRef.current) saveLog(next);
+      return next;
+    });
     return id;
   }, []);
 
   const updateEntry = useCallback((id: number, status: 'success' | 'error', message?: string) => {
-    setEntries(prev =>
-      prev.map(e => e.id === id ? { ...e, status, message } : e)
-    );
+    setEntries(prev => {
+      const next = prev.map(e => e.id === id ? { ...e, status, message } : e);
+      if (isLoadedRef.current) saveLog(next);
+      return next;
+    });
   }, []);
 
   const clearEntries = useCallback(() => {
     setEntries([]);
+    if (isLoadedRef.current) saveLog([]);
   }, []);
 
   return { entries, addEntry, updateEntry, clearEntries };

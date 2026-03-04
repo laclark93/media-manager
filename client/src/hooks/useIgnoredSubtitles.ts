@@ -1,23 +1,26 @@
-import { useState } from 'react';
-
-const STORAGE_KEY = 'mmd_ignored_subtitles';
-
-function loadIgnored(): Set<string> {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return new Set(stored ? JSON.parse(stored) : []);
-  } catch {
-    return new Set();
-  }
-}
+import { useState, useEffect, useRef } from 'react';
+import { fetchApi } from '../utils/api';
 
 export function useIgnoredSubtitles() {
-  const [ignoredKeys, setIgnoredKeys] = useState<Set<string>>(loadIgnored);
+  const [ignoredKeys, setIgnoredKeys] = useState<Set<string>>(new Set());
+  const isLoadedRef = useRef(false);
+
+  useEffect(() => {
+    fetchApi<{ subtitles: string[] }>('/api/persistence/ignored')
+      .then(data => {
+        isLoadedRef.current = true;
+        setIgnoredKeys(new Set(data.subtitles));
+      })
+      .catch(() => { isLoadedRef.current = true; });
+  }, []);
 
   const ignoreItem = (key: string) => {
     setIgnoredKeys(prev => {
       const next = new Set([...prev, key]);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
+      fetchApi('/api/persistence/ignored/subtitles', {
+        method: 'PUT',
+        body: JSON.stringify([...next]),
+      }).catch(() => {});
       return next;
     });
   };
@@ -25,7 +28,10 @@ export function useIgnoredSubtitles() {
   const restoreItem = (key: string) => {
     setIgnoredKeys(prev => {
       const next = new Set([...prev].filter(k => k !== key));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
+      fetchApi('/api/persistence/ignored/subtitles', {
+        method: 'PUT',
+        body: JSON.stringify([...next]),
+      }).catch(() => {});
       return next;
     });
   };

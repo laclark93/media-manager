@@ -9,6 +9,7 @@ import settingsRouter from './routes/settings.js';
 import jellyseerrRouter from './routes/jellyseerr.js';
 import plexRouter from './routes/plex.js';
 import authRouter from './routes/auth.js';
+import persistenceRouter from './routes/persistence.js';
 import { authMiddleware } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -39,6 +40,7 @@ app.use('/api/radarr', radarrRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/jellyseerr', jellyseerrRouter);
 app.use('/api/plex', plexRouter);
+app.use('/api/persistence', persistenceRouter);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
