@@ -292,14 +292,15 @@ router.get('/early', async (_req: Request, res: Response) => {
       return;
     }
     const now = new Date();
+    const threshold = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24-hour grace period
     const allMovies = await radarrService.getMovies(config.radarrUrl, config.radarrApiKey);
 
     // Movies that have a file but haven't been released to home video yet
     const earlyMovies = allMovies.filter(m => {
       if (!m.hasFile || m.status === 'released') return false;
-      // Flag if at least one home release date exists and is in the future, or no home release dates at all
-      const digitalFuture = m.digitalRelease && new Date(m.digitalRelease) > now;
-      const physicalFuture = m.physicalRelease && new Date(m.physicalRelease) > now;
+      // Flag if at least one home release date exists and is more than 24h away, or no home release dates at all
+      const digitalFuture = m.digitalRelease && new Date(m.digitalRelease) > threshold;
+      const physicalFuture = m.physicalRelease && new Date(m.physicalRelease) > threshold;
       const noHomeRelease = !m.digitalRelease && !m.physicalRelease;
       return digitalFuture || physicalFuture || noHomeRelease;
     });

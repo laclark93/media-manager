@@ -407,13 +407,14 @@ router.get('/early', async (_req: Request, res: Response) => {
       return;
     }
     const now = new Date();
+    const threshold = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24-hour grace period
     const allSeries = await sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey);
 
     // Only check series that have files AND have a future airing (optimisation)
     const candidates = allSeries.filter(s =>
       s.statistics?.episodeFileCount > 0 &&
       s.nextAiring &&
-      new Date(s.nextAiring) > now
+      new Date(s.nextAiring) > threshold
     );
 
     if (candidates.length === 0) {
@@ -430,7 +431,7 @@ router.get('/early', async (_req: Request, res: Response) => {
       const result = episodeResults[i];
       if (result.status !== 'fulfilled') return;
       const earlyEps = result.value.filter(ep =>
-        ep.hasFile && ep.airDateUtc && new Date(ep.airDateUtc) > now
+        ep.hasFile && ep.airDateUtc && new Date(ep.airDateUtc) > threshold
       );
       if (earlyEps.length === 0) return;
       const poster = s.images.find(img => img.coverType === 'poster');
