@@ -36,16 +36,6 @@ export function Toolbar({
 }: ToolbarProps) {
   return (
     <div className="toolbar">
-      {onRefresh && (
-        <button
-          className="toolbar__dir-btn"
-          onClick={onRefresh}
-          disabled={refreshing}
-          title="Refresh"
-        >
-          {refreshing ? '…' : '↺'}
-        </button>
-      )}
       <div className="toolbar__sort">
         <label>Sort:</label>
         <select
@@ -81,6 +71,16 @@ export function Toolbar({
         <span className="toolbar__count">
           {filteredCount === totalCount ? totalCount : `${filteredCount} / ${totalCount}`}
         </span>
+        {onRefresh && (
+          <button
+            className="toolbar__refresh-btn"
+            onClick={onRefresh}
+            disabled={refreshing}
+            title="Refresh"
+          >
+            {refreshing ? '…' : '↺'}
+          </button>
+        )}
       </div>
     </div>
   );

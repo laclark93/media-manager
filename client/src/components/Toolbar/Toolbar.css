@@ -82,6 +82,30 @@
   margin-left: 8px;
 }
 
+.toolbar__refresh-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+  margin-left: 6px;
+}
+
+.toolbar__refresh-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.toolbar__refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Mobile ───────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .toolbar {

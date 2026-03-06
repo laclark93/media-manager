@@ -29,7 +29,7 @@
   gap: 10px;
   cursor: pointer;
   min-width: 0;
-  flex-shrink: 1;
+  flex: 1;
 }
 
 .anime-page__section-toggle:hover ~ .anime-page__section-refresh,
