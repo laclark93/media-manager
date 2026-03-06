@@ -21,6 +21,14 @@ function hasEnglishSubs(subtitles: string | undefined): boolean {
   return subtitles.split('/').some(s => isEnglishToken(s.trim()));
 }
 
+/** Returns true if all audio tracks are non-English (file likely needs subtitles) */
+function isNonEnglishAudio(audioLanguages: string | undefined): boolean {
+  if (!audioLanguages || audioLanguages.trim() === '') return false;
+  const tracks = audioLanguages.split('/').map(s => s.trim()).filter(Boolean);
+  if (tracks.length === 0) return false;
+  return !tracks.some(t => isEnglishToken(t));
+}
+
 router.get('/movies', async (_req: Request, res: Response) => {
   try {
     const config = getConfig();
@@ -124,9 +132,13 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       const result = fileResults[i];
       if (result.status !== 'fulfilled') return;
       const files = result.value;
-      const filesWithExplicitSubs = files.filter(f => f.mediaInfo?.subtitles && f.mediaInfo.subtitles.trim() !== '');
-      if (filesWithExplicitSubs.length === 0) return; // all unnamed → assume English
-      const missingEngSubs = filesWithExplicitSubs.filter(f => !hasEnglishSubs(f.mediaInfo?.subtitles));
+      // Flag files where: (a) subtitle tracks exist but none are English, OR
+      // (b) no subtitle tracks at all but audio is non-English
+      const missingEngSubs = files.filter(f => {
+        const subs = f.mediaInfo?.subtitles?.trim();
+        if (subs) return !hasEnglishSubs(subs);
+        return isNonEnglishAudio(f.mediaInfo?.audioLanguages);
+      });
       if (missingEngSubs.length === 0) return;
       const poster = m.images.find(img => img.coverType === 'poster');
       missing.push({
@@ -136,7 +148,12 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         service: 'radarr',
         affectedFiles: missingEngSubs.length,
         totalFiles: files.length,
-        foundSubtitles: [...new Set(missingEngSubs.map(f => f.mediaInfo?.subtitles).filter(Boolean))].join(', '),
+        foundSubtitles: [...new Set(missingEngSubs.map(f => {
+          const subs = f.mediaInfo?.subtitles?.trim();
+          if (subs) return subs;
+          const audio = f.mediaInfo?.audioLanguages?.trim();
+          return audio ? `No subtitles (${audio} audio)` : 'No subtitles';
+        }))].join(', '),
         affectedFileIds: missingEngSubs.map(f => f.id),
         slug: m.titleSlug,
         posterUrl: poster ? `/api/radarr/image${poster.url}` : undefined,

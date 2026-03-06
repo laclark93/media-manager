@@ -21,6 +21,14 @@ function hasEnglishSubs(subtitles: string | undefined): boolean {
   return subtitles.split('/').some(s => isEnglishToken(s.trim()));
 }
 
+/** Returns true if all audio tracks are non-English (file likely needs subtitles) */
+function isNonEnglishAudio(audioLanguages: string | undefined): boolean {
+  if (!audioLanguages || audioLanguages.trim() === '') return false;
+  const tracks = audioLanguages.split('/').map(s => s.trim()).filter(Boolean);
+  if (tracks.length === 0) return false;
+  return !tracks.some(t => isEnglishToken(t));
+}
+
 router.get('/series', async (_req: Request, res: Response) => {
   try {
     const config = getConfig();
@@ -160,20 +168,30 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         episodes.filter(e => e.episodeFileId).map(e => [e.episodeFileId!, e])
       );
 
-      const filesWithExplicitSubs = files.filter(f => f.mediaInfo?.subtitles && f.mediaInfo.subtitles.trim() !== '');
-      if (filesWithExplicitSubs.length === 0) return;
-      const missingEngSubs = filesWithExplicitSubs.filter(f => !hasEnglishSubs(f.mediaInfo?.subtitles));
+      // Flag files where: (a) subtitle tracks exist but none are English, OR
+      // (b) no subtitle tracks at all but audio is non-English
+      const missingEngSubs = files.filter(f => {
+        const subs = f.mediaInfo?.subtitles?.trim();
+        if (subs) return !hasEnglishSubs(subs);
+        return isNonEnglishAudio(f.mediaInfo?.audioLanguages);
+      });
       if (missingEngSubs.length === 0) return;
 
       const affectedEpisodes = missingEngSubs.map(f => {
         const ep = fileToEpisode.get(f.id);
+        const subs = f.mediaInfo?.subtitles?.trim();
+        const subtitleLabel = subs
+          ? subs
+          : f.mediaInfo?.audioLanguages?.trim()
+            ? `No subtitles (${f.mediaInfo.audioLanguages} audio)`
+            : 'No subtitles';
         return {
           fileId: f.id,
           episodeId: ep?.id ?? null,
           seasonNumber: f.seasonNumber,
           episodeNumber: ep?.episodeNumber ?? null,
           title: ep?.title ?? null,
-          subtitles: f.mediaInfo?.subtitles ?? '',
+          subtitles: subtitleLabel,
         };
       });
 
@@ -185,7 +203,12 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         service: 'sonarr',
         affectedFiles: missingEngSubs.length,
         totalFiles: files.length,
-        foundSubtitles: [...new Set(missingEngSubs.map(f => f.mediaInfo?.subtitles).filter(Boolean))].join(', '),
+        foundSubtitles: [...new Set(missingEngSubs.map(f => {
+          const subs = f.mediaInfo?.subtitles?.trim();
+          if (subs) return subs;
+          const audio = f.mediaInfo?.audioLanguages?.trim();
+          return audio ? `No subtitles (${audio} audio)` : 'No subtitles';
+        }))].join(', '),
         affectedEpisodes,
         slug: s.titleSlug,
         posterUrl: poster ? `/api/sonarr/image${poster.url}` : undefined,
