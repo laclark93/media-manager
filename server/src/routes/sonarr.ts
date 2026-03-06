@@ -164,10 +164,18 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       if (result.status !== 'fulfilled') return;
       const [files, episodes] = result.value;
 
-      // Map episodeFileId → episode for quick lookup
+      // Map episodeFileId → episode for quick lookup (last episode wins for combined files)
       const fileToEpisode = new Map(
         episodes.filter(e => e.episodeFileId).map(e => [e.episodeFileId!, e])
       );
+      // Map episodeFileId → all episodes (handles combined files like S05E03-04)
+      const fileToAllEpisodes = new Map<number, typeof episodes>();
+      for (const e of episodes) {
+        if (!e.episodeFileId) continue;
+        const existing = fileToAllEpisodes.get(e.episodeFileId);
+        if (existing) existing.push(e);
+        else fileToAllEpisodes.set(e.episodeFileId, [e]);
+      }
 
       // Flag files where: (a) no subtitle tracks at all (anime should always have subs), OR
       // (b) subtitle tracks exist but none are English (unnamed tracks assumed English)
@@ -185,6 +193,10 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
 
       const affectedEpisodes = missingEngSubs.map(f => {
         const ep = fileToEpisode.get(f.id);
+        const allEps = fileToAllEpisodes.get(f.id) ?? (ep ? [ep] : []);
+        const allEpisodeKeys = allEps
+          .filter(e => e.seasonNumber != null && e.episodeNumber != null)
+          .map(e => `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}`);
         const subtitleLabel = f.mediaInfo?.subtitles?.trim() || 'No subtitles';
         return {
           fileId: f.id,
@@ -193,6 +205,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
           episodeNumber: ep?.episodeNumber ?? null,
           title: ep?.title ?? null,
           subtitles: subtitleLabel,
+          allEpisodeKeys: allEpisodeKeys.length > 1 ? allEpisodeKeys : undefined,
         };
       });
 
@@ -233,19 +246,22 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
             console.log(`[TRACE] plex episodes found: ${plexEpisodes.length}`);
 
             // Fetch streams only for affected episodes that exist in Plex
+            // For combined files (e.g. S05E03-04), try all episode keys to find the Plex entry
             const targets = (item.affectedEpisodes as any[])
               .filter(e => e.episodeNumber != null)
               .map(e => {
-                const key = `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}`;
-                return { ep: e, key, ratingKey: plexEpMap.get(key) };
+                const primaryKey = `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}`;
+                const keysToTry: string[] = e.allEpisodeKeys ?? [primaryKey];
+                const plexKey = keysToTry.find((k: string) => plexEpMap.has(k));
+                return { ep: e, key: primaryKey, plexKey: plexKey ?? primaryKey, ratingKey: plexKey ? plexEpMap.get(plexKey) : undefined };
               })
               .filter(x => x.ratingKey);
 
-            console.log(`[TRACE] plex targets for stream check "${item.title}": ${targets.map(x => x.key).join(', ') || 'none'}`);
+            console.log(`[TRACE] plex targets for stream check "${item.title}": ${targets.map(x => x.key + (x.plexKey !== x.key ? `(→${x.plexKey})` : '')).join(', ') || 'none'}`);
             if (targets.length === 0) return item;
 
             const streamResults = await Promise.allSettled(
-              targets.map(x => plexService.getItemStreams(config.plexToken, x.ratingKey!, `"${item.title}" ${x.key}`))
+              targets.map(x => plexService.getItemStreams(config.plexToken, x.ratingKey!, `"${item.title}" ${x.plexKey}`))
             );
 
             const plexHasEngSub = new Set<string>();
@@ -253,7 +269,8 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               const r = streamResults[i];
               if (r.status === 'fulfilled') {
                 const subStreams = r.value;
-                console.log(`[TRACE] plex streams for "${item.title}" ${x.key}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'} display=${s.displayTitle ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
+                const epLabel = x.plexKey !== x.key ? `${x.key}(→${x.plexKey})` : x.key;
+                console.log(`[TRACE] plex streams for "${item.title}" ${epLabel}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'} display=${s.displayTitle ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
                 if (r.value.some((s: any) => {
                   const code = s.languageCode?.toLowerCase()?.trim();
                   const lang = s.language?.toLowerCase()?.trim();
