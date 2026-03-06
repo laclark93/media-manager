@@ -234,6 +234,14 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
   const episodes = (item.affectedEpisodes ?? []).filter(ep => !dismissedFileIds.has(ep.fileId));
   const movieFileIds = (item.affectedFileIds ?? []).filter(id => !dismissedFileIds.has(id));
 
+  // Auto-close when all items have been marked as failed
+  useEffect(() => {
+    if (dismissedFileIds.size > 0 && episodes.length === 0 && movieFileIds.length === 0) {
+      const t = setTimeout(onClose, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [dismissedFileIds.size, episodes.length, movieFileIds.length, onClose]);
+
   const handleFileDone = (fileId: number) => {
     setDismissedFileIds(prev => new Set([...prev, fileId]));
   };
