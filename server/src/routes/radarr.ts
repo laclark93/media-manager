@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import { getConfig } from '../config.js';
 import * as radarrService from '../services/radarr.js';
+import * as plexService from '../services/plex.js';
 
 const router = Router();
 
@@ -122,7 +123,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       animeMovies.map(m => radarrService.getMovieFiles(config.radarrUrl, config.radarrApiKey, m.id))
     );
 
-    const missing: object[] = [];
+    let missing: any[] = [];
     animeMovies.forEach((m, i) => {
       const result = fileResults[i];
       if (result.status !== 'fulfilled') return;
@@ -150,6 +151,35 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         remotePosterUrl: poster?.remoteUrl,
       });
     });
+
+    // Plex cross-reference: filter out false positives caused by external subtitle files
+    // (Plex indexes external .ass/.srt files as subtitle streams; Sonarr mediaInfo does not)
+    if (config.plexToken && missing.length > 0) {
+      const plexResults = await Promise.allSettled(
+        missing.map(async (item) => {
+          try {
+            const results = await plexService.search(config.plexToken, item.title, 'movie');
+            if (results.length === 0) return item;
+            const match = results.find((r: any) => r.year === item.year) ?? results[0];
+            const streams = await plexService.getItemStreams(config.plexToken, match.ratingKey);
+            const hasEngSub = streams.some(s =>
+              s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
+              s.language?.toLowerCase() === 'english'
+            );
+            if (hasEngSub) {
+              console.log(`[INFO] Radarr subtitle-check: Plex confirmed English subs for "${item.title}" — removing false positive`);
+              return null;
+            }
+            return item;
+          } catch {
+            return item; // Plex lookup failed, keep original
+          }
+        })
+      );
+      missing = plexResults
+        .map(r => r.status === 'fulfilled' ? r.value : null)
+        .filter((item): item is any => item != null);
+    }
 
     console.log(`[INFO] Radarr subtitle-check: ${missing.length} movie(s) with missing English subs (of ${animeMovies.length} anime movies checked)`);
     res.json(missing);

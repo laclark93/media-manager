@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import { getConfig } from '../config.js';
 import * as sonarrService from '../services/sonarr.js';
+import * as plexService from '../services/plex.js';
 
 const router = Router();
 
@@ -152,7 +153,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       ]))
     );
 
-    const missing: object[] = [];
+    let missing: any[] = [];
     animeSeries.forEach((s, i) => {
       const result = results[i];
       if (result.status !== 'fulfilled') return;
@@ -200,6 +201,72 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         remotePosterUrl: poster?.remoteUrl,
       });
     });
+
+    // Plex cross-reference: filter out false positives caused by external subtitle files
+    // (Plex indexes external .ass/.srt files as subtitle streams; Sonarr mediaInfo does not)
+    if (config.plexToken && missing.length > 0) {
+      const plexResults = await Promise.allSettled(
+        missing.map(async (item) => {
+          try {
+            const plexMatches = await plexService.search(config.plexToken, item.title, 'show');
+            if (plexMatches.length === 0) return item;
+            const match = plexMatches.find((r: any) => r.year === item.year) ?? plexMatches[0];
+
+            const plexEpisodes = await plexService.getShowEpisodes(config.plexToken, match.ratingKey);
+            const plexEpMap = new Map<string, string>();
+            for (const ep of plexEpisodes) {
+              const key = `S${String(ep.seasonNumber).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}`;
+              plexEpMap.set(key, ep.ratingKey);
+            }
+
+            // Fetch streams only for affected episodes that exist in Plex
+            const targets = (item.affectedEpisodes as any[])
+              .filter(e => e.episodeNumber != null)
+              .map(e => {
+                const key = `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}`;
+                return { ep: e, key, ratingKey: plexEpMap.get(key) };
+              })
+              .filter(x => x.ratingKey);
+
+            if (targets.length === 0) return item;
+
+            const streamResults = await Promise.allSettled(
+              targets.map(x => plexService.getItemStreams(config.plexToken, x.ratingKey!))
+            );
+
+            const plexHasEngSub = new Set<string>();
+            targets.forEach((x, i) => {
+              const r = streamResults[i];
+              if (r.status === 'fulfilled' && r.value.some(s =>
+                s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
+                s.language?.toLowerCase() === 'english'
+              )) {
+                plexHasEngSub.add(x.key);
+              }
+            });
+
+            if (plexHasEngSub.size === 0) return item;
+
+            const filteredEps = (item.affectedEpisodes as any[]).filter(e => {
+              if (e.episodeNumber == null) return true;
+              const key = `S${String(e.seasonNumber).padStart(2, '0')}E${String(e.episodeNumber).padStart(2, '0')}`;
+              return !plexHasEngSub.has(key);
+            });
+
+            if (plexHasEngSub.size > 0) {
+              console.log(`[INFO] Sonarr subtitle-check: Plex confirmed English subs for ${plexHasEngSub.size} episode(s) in "${item.title}" — removing false positives`);
+            }
+
+            return { ...item, affectedEpisodes: filteredEps, affectedFiles: filteredEps.length };
+          } catch {
+            return item; // Plex lookup failed, keep original
+          }
+        })
+      );
+      missing = plexResults
+        .map(r => r.status === 'fulfilled' ? r.value : null)
+        .filter((item): item is any => item != null && item.affectedFiles > 0);
+    }
 
     console.log(`[INFO] Sonarr subtitle-check: ${missing.length} series with missing English subs (of ${animeSeries.length} anime series checked)`);
     res.json(missing);
