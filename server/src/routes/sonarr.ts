@@ -252,8 +252,8 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
             targets.forEach((x, i) => {
               const r = streamResults[i];
               if (r.status === 'fulfilled') {
-                const subStreams = r.value.filter((s: any) => s.streamType === 3);
-                console.log(`[TRACE] plex streams for "${item.title}" ${x.key}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
+                const subStreams = r.value;
+                console.log(`[TRACE] plex streams for "${item.title}" ${x.key}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'} display=${s.displayTitle ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
                 if (r.value.some((s: any) =>
                   s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
                   s.language?.toLowerCase() === 'english'

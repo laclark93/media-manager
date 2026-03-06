@@ -147,8 +147,11 @@ export async function getItemStreams(token: string, ratingKey: string): Promise<
   const streams: SubtitleStream[] = [];
   for (const media of metadata.Media || []) {
     for (const part of media.Part || []) {
-      for (const stream of part.Stream || []) {
+      const allStreams = part.Stream || [];
+      console.log(`[TRACE] plex getItemStreams ratingKey=${ratingKey}: ${allStreams.length} total streams, types=[${allStreams.map((s: any) => s.streamType).join(',')}]`);
+      for (const stream of allStreams) {
         if (stream.streamType === 3) {
+          console.log(`[TRACE] plex subtitle stream: streamType=${stream.streamType} language=${stream.language ?? 'null'} languageCode=${stream.languageCode ?? 'null'} displayTitle=${stream.displayTitle ?? 'null'} codec=${stream.codec ?? 'null'}`);
           streams.push({
             language: stream.language || '',
             languageCode: stream.languageCode || '',
