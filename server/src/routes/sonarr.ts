@@ -241,7 +241,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               })
               .filter(x => x.ratingKey);
 
-            console.log(`[TRACE] plex targets for stream check: ${targets.map(x => x.key).join(', ') || 'none'}`);
+            console.log(`[TRACE] plex targets for stream check "${item.title}": ${targets.map(x => x.key).join(', ') || 'none'}`);
             if (targets.length === 0) return item;
 
             const streamResults = await Promise.allSettled(
@@ -253,7 +253,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               const r = streamResults[i];
               if (r.status === 'fulfilled') {
                 const subStreams = r.value.filter((s: any) => s.streamType === 3);
-                console.log(`[TRACE] plex streams for ${x.key}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
+                console.log(`[TRACE] plex streams for "${item.title}" ${x.key}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
                 if (r.value.some((s: any) =>
                   s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
                   s.language?.toLowerCase() === 'english'
