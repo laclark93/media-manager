@@ -3,6 +3,14 @@ import { SubtitleMissing, AffectedEpisode } from '../../types/anime';
 import { fetchApi } from '../../utils/api';
 import '../EpisodeModal/EpisodeModal.css';
 
+interface SubtitleStream {
+  language: string;
+  languageCode: string;
+  codec: string;
+  forced: boolean;
+  displayTitle?: string;
+}
+
 type ActionState = 'idle' | 'loading' | 'done' | 'error';
 
 interface SubtitleModalProps {
@@ -13,16 +21,43 @@ interface SubtitleModalProps {
   onClose: () => void;
 }
 
+function PlexSubtitleBadge({ streams }: Readonly<{ streams: SubtitleStream[] | undefined }>) {
+  if (!streams) return null;
+  if (streams.length === 0) return (
+    <span title="Plex detected no subtitle tracks" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+      Plex: none
+    </span>
+  );
+  const hasEnglish = streams.some(s =>
+    s.languageCode === 'eng' || s.language.toLowerCase() === 'english'
+  );
+  const labels = [...new Set(streams.map(s => s.displayTitle || s.language || s.codec || '?'))].join(', ');
+  return (
+    <span
+      title={`Plex subtitle tracks: ${labels}`}
+      style={{
+        fontSize: '0.7rem',
+        color: hasEnglish ? 'var(--success, #4caf50)' : 'var(--text-muted)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      Plex: {hasEnglish ? '✓ Eng' : labels || 'no eng'}
+    </span>
+  );
+}
+
 function EpisodeRow({
   ep,
   seriesId,
   plexUrl,
+  plexSubtitles,
   errMsg: parentErr,
   onDone,
 }: {
   ep: AffectedEpisode;
   seriesId: number;
   plexUrl?: string;
+  plexSubtitles?: SubtitleStream[];
   errMsg?: string;
   onDone: (fileId: number) => void;
 }) {
@@ -55,6 +90,7 @@ function EpisodeRow({
       <span className="modal__ep-number">{label}</span>
       <span className="modal__ep-title" title={ep.title || undefined}>{ep.title || ''}</span>
       <span className="modal__ep-date">{ep.subtitles || 'none'}</span>
+      <PlexSubtitleBadge streams={plexSubtitles} />
       {plexUrl && (
         <a
           className="modal__ep-search"
@@ -128,6 +164,8 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
   const [plexEpisodeUrls, setPlexEpisodeUrls] = useState<Record<string, string>>({});
   const [plexShowUrl, setPlexShowUrl] = useState<string | null>(null);
   const [plexLoading, setPlexLoading] = useState(false);
+  const [plexSubtitleStreams, setPlexSubtitleStreams] = useState<Record<string, SubtitleStream[]>>({});
+  const [plexMovieStreams, setPlexMovieStreams] = useState<SubtitleStream[] | undefined>(undefined);
 
   // Fetch Plex episode URLs on mount
   useEffect(() => {
@@ -154,6 +192,35 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
     })();
     return () => { cancelled = true; };
   }, [plexConfigured, item.title, item.year, item.service]);
+
+  // Fetch Plex subtitle streams for affected episodes/movies
+  useEffect(() => {
+    if (!plexConfigured) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const plexType = item.service === 'sonarr' ? 'show' : 'movie';
+        const params = new URLSearchParams({ title: item.title, type: plexType });
+        if (item.year) params.set('year', String(item.year));
+        if (item.service === 'sonarr' && item.affectedEpisodes && item.affectedEpisodes.length > 0) {
+          const epKeys = item.affectedEpisodes
+            .filter(ep => ep.seasonNumber != null && ep.episodeNumber != null)
+            .map(ep => `S${String(ep.seasonNumber).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}`);
+          if (epKeys.length > 0) params.set('episodes', epKeys.join(','));
+        }
+        const result = await fetchApi<{ episodes?: Record<string, SubtitleStream[]>; movie?: SubtitleStream[] }>(
+          `/api/plex/subtitle-streams?${params}`
+        );
+        if (!cancelled) {
+          if (result.episodes) setPlexSubtitleStreams(result.episodes);
+          if (result.movie) setPlexMovieStreams(result.movie);
+        }
+      } catch {
+        // Plex subtitle lookup failed — non-fatal
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [plexConfigured, item.title, item.year, item.service, item.affectedEpisodes]);
 
   const openUrl =
     item.slug && item.service === 'sonarr' && sonarrUrl

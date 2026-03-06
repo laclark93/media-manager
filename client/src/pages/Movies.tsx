@@ -19,7 +19,7 @@ interface MovieItem {
 }
 
 export function Movies() {
-  const { movies, loading, error, searchMovie } = useRadarr();
+  const { movies, loading, error, searchMovie, refresh } = useRadarr();
   const { settings } = useSettings();
   const { addEntry, updateEntry } = useActivityLog();
 
@@ -56,6 +56,7 @@ export function Movies() {
         onFilterChange={setStalenessFilter}
         totalCount={totalCount}
         filteredCount={filteredCount}
+        onRefresh={refresh}
       />
       {filtered.length === 0 ? (
         <div className="empty-state">

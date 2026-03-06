@@ -16,10 +16,11 @@ export function useAnimeMismatch() {
     const showSpinner = force || !cache.get();
     if (showSpinner) setLoading(true);
     setError(null);
+    const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
     try {
       const [sonarr, radarr] = await Promise.allSettled([
-        fetchApi<AnimeMismatch[]>('/api/sonarr/anime-check'),
-        fetchApi<AnimeMismatch[]>('/api/radarr/anime-check'),
+        fetchApi<AnimeMismatch[]>('/api/sonarr/anime-check', opts),
+        fetchApi<AnimeMismatch[]>('/api/radarr/anime-check', opts),
       ]);
       const results: AnimeMismatch[] = [];
       if (sonarr.status === 'fulfilled') results.push(...sonarr.value);

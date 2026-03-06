@@ -16,10 +16,11 @@ export function useSubtitleCheck() {
     const showSpinner = force || !cache.get();
     if (showSpinner) setLoading(true);
     setError(null);
+    const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
     try {
       const [sonarr, radarr] = await Promise.allSettled([
-        fetchApi<SubtitleMissing[]>('/api/sonarr/subtitle-check'),
-        fetchApi<SubtitleMissing[]>('/api/radarr/subtitle-check'),
+        fetchApi<SubtitleMissing[]>('/api/sonarr/subtitle-check', opts),
+        fetchApi<SubtitleMissing[]>('/api/radarr/subtitle-check', opts),
       ]);
       const results: SubtitleMissing[] = [];
       if (sonarr.status === 'fulfilled') results.push(...sonarr.value);

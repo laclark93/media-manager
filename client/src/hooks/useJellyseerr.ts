@@ -16,8 +16,9 @@ export function useJellyseerr() {
     const showSpinner = force || !cache.get();
     if (showSpinner) setLoading(true);
     setError(null);
+    const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
     try {
-      const data = await fetchApi<JellyseerrIssue[]>('/api/jellyseerr/issues');
+      const data = await fetchApi<JellyseerrIssue[]>('/api/jellyseerr/issues', opts);
       cache.set(data);
       setIssues(data);
     } catch (err) {

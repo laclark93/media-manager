@@ -10,21 +10,33 @@ router.get('/ignored', (_req, res) => {
 });
 
 router.put('/ignored/mismatches', (req, res) => {
-  const keys = req.body;
+  const keys: string[] = req.body;
   if (!Array.isArray(keys)) {
     res.status(400).json({ error: 'Expected array' });
     return;
   }
+  const before = new Set(readIgnored().mismatches);
+  const after = new Set(keys);
+  const added = [...after].filter(k => !before.has(k));
+  const removed = [...before].filter(k => !after.has(k));
+  if (added.length) console.log(`[INFO] Ignored anime mismatch: ${added.join(', ')}`);
+  if (removed.length) console.log(`[INFO] Restored anime mismatch: ${removed.join(', ')}`);
   writeIgnoredMismatches(keys);
   res.json({ success: true });
 });
 
 router.put('/ignored/subtitles', (req, res) => {
-  const keys = req.body;
+  const keys: string[] = req.body;
   if (!Array.isArray(keys)) {
     res.status(400).json({ error: 'Expected array' });
     return;
   }
+  const before = new Set(readIgnored().subtitles);
+  const after = new Set(keys);
+  const added = [...after].filter(k => !before.has(k));
+  const removed = [...before].filter(k => !after.has(k));
+  if (added.length) console.log(`[INFO] Ignored subtitle item: ${added.join(', ')}`);
+  if (removed.length) console.log(`[INFO] Restored subtitle item: ${removed.join(', ')}`);
   writeIgnoredSubtitles(keys);
   res.json({ success: true });
 });

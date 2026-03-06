@@ -33,6 +33,7 @@ router.get('/series', async (_req: Request, res: Response) => {
     const missingSeries = allSeries.filter(
       (s) => s.monitored && s.statistics && s.statistics.episodeCount > s.statistics.episodeFileCount
     );
+    console.log(`[INFO] Sonarr series: ${missingSeries.length} missing (of ${allSeries.length} total)`);
     res.json(missingSeries);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -116,6 +117,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
         };
       })
       .filter(Boolean);
+    console.log(`[INFO] Sonarr anime-check: ${mismatches.length} mismatch(es) found`);
     res.json(mismatches);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -199,6 +201,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       });
     });
 
+    console.log(`[INFO] Sonarr subtitle-check: ${missing.length} series with missing English subs (of ${animeSeries.length} anime series checked)`);
     res.json(missing);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;

@@ -16,8 +16,9 @@ export function useRadarr() {
     const showSpinner = force || !cache.get();
     if (showSpinner) setLoading(true);
     setError(null);
+    const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
     try {
-      const data = await fetchApi<RadarrMovie[]>('/api/radarr/movies');
+      const data = await fetchApi<RadarrMovie[]>('/api/radarr/movies', opts);
       cache.set(data);
       setMovies(data);
     } catch (err) {

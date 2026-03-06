@@ -24,7 +24,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.on('finish', () => {
     const ms = Date.now() - start;
     const level = res.statusCode >= 500 ? 'ERROR' : res.statusCode >= 400 ? 'WARN' : 'INFO';
-    console.log(`[${level}] ${req.method} ${req.path} → ${res.statusCode} (${ms}ms)`);
+    const manual = req.headers['x-manual-refresh'] === '1' ? ' [MANUAL]' : '';
+    const qs = Object.keys(req.query).length ? `?${new URLSearchParams(req.query as Record<string, string>)}` : '';
+    console.log(`[${level}]${manual} ${req.method} ${req.path}${qs} → ${res.statusCode} (${ms}ms)`);
   });
   next();
 });

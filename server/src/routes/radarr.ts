@@ -31,6 +31,7 @@ router.get('/movies', async (_req: Request, res: Response) => {
     }
     const allMovies = await radarrService.getMovies(config.radarrUrl, config.radarrApiKey);
     const missingMovies = allMovies.filter((m) => m.monitored && !m.hasFile);
+    console.log(`[INFO] Radarr movies: ${missingMovies.length} missing (of ${allMovies.length} total)`);
     res.json(missingMovies);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -86,6 +87,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
         };
       })
       .filter(Boolean);
+    console.log(`[INFO] Radarr anime-check: ${mismatches.length} mismatch(es) found`);
     res.json(mismatches);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -149,6 +151,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       });
     });
 
+    console.log(`[INFO] Radarr subtitle-check: ${missing.length} movie(s) with missing English subs (of ${animeMovies.length} anime movies checked)`);
     res.json(missing);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;

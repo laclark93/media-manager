@@ -23,7 +23,7 @@ interface ShowItem {
 }
 
 export function Shows() {
-  const { series, loading, error, searchSeries, searchEpisodes, getMissingEpisodes } = useSonarr();
+  const { series, loading, error, searchSeries, searchEpisodes, getMissingEpisodes, refresh } = useSonarr();
   const { settings } = useSettings();
   const { addEntry, updateEntry } = useActivityLog();
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
@@ -66,6 +66,7 @@ export function Shows() {
         onFilterChange={setStalenessFilter}
         totalCount={totalCount}
         filteredCount={filteredCount}
+        onRefresh={refresh}
       />
       {filtered.length === 0 ? (
         <div className="empty-state">

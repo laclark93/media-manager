@@ -10,6 +10,8 @@ interface ToolbarProps {
   onFilterChange: (filter: StalenessLevel | 'all') => void;
   totalCount: number;
   filteredCount: number;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 const STALENESS_OPTIONS: { value: StalenessLevel | 'all'; label: string }[] = [
@@ -29,9 +31,21 @@ export function Toolbar({
   onFilterChange,
   totalCount,
   filteredCount,
+  onRefresh,
+  refreshing,
 }: ToolbarProps) {
   return (
     <div className="toolbar">
+      {onRefresh && (
+        <button
+          className="toolbar__dir-btn"
+          onClick={onRefresh}
+          disabled={refreshing}
+          title="Refresh"
+        >
+          {refreshing ? '…' : '↺'}
+        </button>
+      )}
       <div className="toolbar__sort">
         <label>Sort:</label>
         <select

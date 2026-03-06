@@ -16,8 +16,9 @@ export function useSonarr() {
     const showSpinner = force || !cache.get();
     if (showSpinner) setLoading(true);
     setError(null);
+    const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
     try {
-      const data = await fetchApi<SonarrSeries[]>('/api/sonarr/series');
+      const data = await fetchApi<SonarrSeries[]>('/api/sonarr/series', opts);
       cache.set(data);
       setSeries(data);
     } catch (err) {

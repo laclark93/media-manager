@@ -112,7 +112,9 @@ router.post('/issues/:id/search', async (req: Request, res: Response) => {
       problemEpisode?: number;
     };
 
+    const issueId = req.params['id'];
     if (mediaType === 'movie' && config.radarrUrl && config.radarrApiKey) {
+      console.log(`[INFO] Jellyseerr issue #${issueId}: triggering Radarr search for movie ${externalServiceId}`);
       const result = await radarrService.searchMovie(config.radarrUrl, config.radarrApiKey, [externalServiceId]);
       res.json(result);
     } else if (mediaType === 'tv' && config.sonarrUrl && config.sonarrApiKey) {
@@ -123,12 +125,14 @@ router.post('/issues/:id/search', async (req: Request, res: Response) => {
           (e) => e.seasonNumber === problemSeason && e.episodeNumber === problemEpisode
         );
         if (episode) {
+          console.log(`[INFO] Jellyseerr issue #${issueId}: triggering Sonarr search for S${String(problemSeason).padStart(2,'0')}E${String(problemEpisode).padStart(2,'0')} (series ${externalServiceId})`);
           const result = await sonarrService.searchEpisodes(config.sonarrUrl, config.sonarrApiKey, [episode.id]);
           res.json(result);
           return;
         }
       }
       // Fallback: search full series
+      console.log(`[INFO] Jellyseerr issue #${issueId}: triggering Sonarr series search for series ${externalServiceId}`);
       const result = await sonarrService.searchSeries(config.sonarrUrl, config.sonarrApiKey, externalServiceId);
       res.json(result);
     } else {
@@ -145,6 +149,7 @@ router.post('/issues/:id/resolve', async (req: Request, res: Response) => {
   try {
     const config = getConfig();
     const issueId = parseInt(req.params['id'] as string);
+    console.log(`[INFO] Jellyseerr: resolving issue #${issueId}`);
     const result = await jellyseerrService.resolveIssue(config.jellyseerrUrl, config.jellyseerrApiKey, issueId);
     res.json(result);
   } catch (err) {
@@ -158,6 +163,7 @@ router.post('/issues/:id/reopen', async (req: Request, res: Response) => {
   try {
     const config = getConfig();
     const issueId = parseInt(req.params['id'] as string);
+    console.log(`[INFO] Jellyseerr: reopening issue #${issueId}`);
     const result = await jellyseerrService.reopenIssue(config.jellyseerrUrl, config.jellyseerrApiKey, issueId);
     res.json(result);
   } catch (err) {

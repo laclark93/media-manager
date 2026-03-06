@@ -130,6 +130,39 @@ export async function getShowEpisodes(
   }));
 }
 
+export interface SubtitleStream {
+  language: string;
+  languageCode: string;
+  codec: string;
+  forced: boolean;
+  displayTitle?: string;
+}
+
+/** Get subtitle streams for a specific item (episode or movie) by its ratingKey */
+export async function getItemStreams(token: string, ratingKey: string): Promise<SubtitleStream[]> {
+  const server = await discoverServer(token);
+  const resp = await client(server.uri, token).get(`/library/metadata/${ratingKey}`);
+  const metadata = resp.data.MediaContainer?.Metadata?.[0];
+  if (!metadata) return [];
+  const streams: SubtitleStream[] = [];
+  for (const media of metadata.Media || []) {
+    for (const part of media.Part || []) {
+      for (const stream of part.Stream || []) {
+        if (stream.streamType === 3) {
+          streams.push({
+            language: stream.language || '',
+            languageCode: stream.languageCode || '',
+            codec: stream.codec || '',
+            forced: !!stream.forced,
+            displayTitle: stream.displayTitle,
+          });
+        }
+      }
+    }
+  }
+  return streams;
+}
+
 /** Build a Plex web URL using app.plex.tv (works from anywhere) */
 export function buildWebUrl(machineIdentifier: string, ratingKey: string): string {
   const encodedKey = encodeURIComponent(`/library/metadata/${ratingKey}`);
