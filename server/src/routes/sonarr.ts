@@ -173,8 +173,11 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       // (b) subtitle tracks exist but none are English (unnamed tracks assumed English)
       const missingEngSubs = files.filter(f => {
         const subs = f.mediaInfo?.subtitles?.trim();
-        if (!subs) return true; // no subtitles at all → flag
-        return !hasEnglishSubs(subs); // has subtitles → check for English
+        const flagged = !subs ? true : !hasEnglishSubs(subs);
+        if (flagged) {
+          console.log(`[SUBTITLE-CHECK] "${s.title}" S${String(f.seasonNumber).padStart(2,'0')} fileId=${f.id} subtitles=${JSON.stringify(f.mediaInfo?.subtitles ?? null)}`);
+        }
+        return flagged;
       });
       if (missingEngSubs.length === 0) return;
 
