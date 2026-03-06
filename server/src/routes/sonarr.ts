@@ -245,7 +245,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
             if (targets.length === 0) return item;
 
             const streamResults = await Promise.allSettled(
-              targets.map(x => plexService.getItemStreams(config.plexToken, x.ratingKey!))
+              targets.map(x => plexService.getItemStreams(config.plexToken, x.ratingKey!, `"${item.title}" ${x.key}`))
             );
 
             const plexHasEngSub = new Set<string>();

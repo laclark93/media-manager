@@ -166,7 +166,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
             const results = await plexService.search(config.plexToken, item.title, 'movie');
             if (results.length === 0) return item;
             const match = results.find((r: any) => r.year === item.year) ?? results[0];
-            const streams = await plexService.getItemStreams(config.plexToken, match.ratingKey);
+            const streams = await plexService.getItemStreams(config.plexToken, match.ratingKey, `"${item.title}"`);
             const hasEngSub = streams.some(s =>
               s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
               s.language?.toLowerCase() === 'english'

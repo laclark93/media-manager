@@ -139,19 +139,20 @@ export interface SubtitleStream {
 }
 
 /** Get subtitle streams for a specific item (episode or movie) by its ratingKey */
-export async function getItemStreams(token: string, ratingKey: string): Promise<SubtitleStream[]> {
+export async function getItemStreams(token: string, ratingKey: string, context?: string): Promise<SubtitleStream[]> {
   const server = await discoverServer(token);
   const resp = await client(server.uri, token).get(`/library/metadata/${ratingKey}`);
   const metadata = resp.data.MediaContainer?.Metadata?.[0];
   if (!metadata) return [];
   const streams: SubtitleStream[] = [];
+  const label = context ?? `ratingKey=${ratingKey}`;
   for (const media of metadata.Media || []) {
     for (const part of media.Part || []) {
       const allStreams = part.Stream || [];
-      console.log(`[TRACE] plex getItemStreams ratingKey=${ratingKey}: ${allStreams.length} total streams, types=[${allStreams.map((s: any) => s.streamType).join(',')}]`);
+      console.log(`[TRACE] plex getItemStreams ${label}: ${allStreams.length} total streams, types=[${allStreams.map((s: any) => s.streamType).join(',')}]`);
       for (const stream of allStreams) {
         if (stream.streamType === 3) {
-          console.log(`[TRACE] plex subtitle stream: streamType=${stream.streamType} language=${stream.language ?? 'null'} languageCode=${stream.languageCode ?? 'null'} displayTitle=${stream.displayTitle ?? 'null'} codec=${stream.codec ?? 'null'}`);
+          console.log(`[TRACE] plex subtitle stream ${label}: language=${stream.language ?? 'null'} languageCode=${stream.languageCode ?? 'null'} displayTitle=${stream.displayTitle ?? 'null'} codec=${stream.codec ?? 'null'}`);
           streams.push({
             language: stream.language || '',
             languageCode: stream.languageCode || '',
