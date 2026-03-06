@@ -468,7 +468,7 @@ router.delete('/episode-file/:fileId', async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Sonarr not configured' });
       return;
     }
-    const fileId = Number.parseInt(req.params['fileId']);
+    const fileId = Number.parseInt(req.params['fileId'] as string);
     if (Number.isNaN(fileId)) {
       res.status(400).json({ error: 'Invalid fileId' });
       return;
