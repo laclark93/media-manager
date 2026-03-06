@@ -254,10 +254,13 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               if (r.status === 'fulfilled') {
                 const subStreams = r.value;
                 console.log(`[TRACE] plex streams for "${item.title}" ${x.key}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'} display=${s.displayTitle ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
-                if (r.value.some((s: any) =>
-                  s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
-                  s.language?.toLowerCase() === 'english'
-                )) {
+                if (r.value.some((s: any) => {
+                  const code = s.languageCode?.toLowerCase()?.trim();
+                  const lang = s.language?.toLowerCase()?.trim();
+                  // No language info → assume English (same denylist principle)
+                  if (!code && !lang) return true;
+                  return code === 'en' || code === 'eng' || lang === 'english';
+                })) {
                   plexHasEngSub.add(x.key);
                 }
               } else {

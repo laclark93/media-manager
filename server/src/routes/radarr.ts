@@ -167,10 +167,12 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
             if (results.length === 0) return item;
             const match = results.find((r: any) => r.year === item.year) ?? results[0];
             const streams = await plexService.getItemStreams(config.plexToken, match.ratingKey, `"${item.title}"`);
-            const hasEngSub = streams.some(s =>
-              s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
-              s.language?.toLowerCase() === 'english'
-            );
+            const hasEngSub = streams.some(s => {
+              const code = s.languageCode?.toLowerCase()?.trim();
+              const lang = s.language?.toLowerCase()?.trim();
+              if (!code && !lang) return true; // no language info → assume English
+              return code === 'en' || code === 'eng' || lang === 'english';
+            });
             if (hasEngSub) {
               console.log(`[INFO] Radarr subtitle-check: Plex confirmed English subs for "${item.title}" — removing false positive`);
               return null;
