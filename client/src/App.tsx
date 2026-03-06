@@ -6,6 +6,7 @@ import { Issues } from './pages/Issues';
 import { Anime } from './pages/Anime';
 import { Settings } from './pages/Settings';
 import { Log } from './pages/Log';
+import { Early } from './pages/Early';
 import { Login } from './pages/Login';
 import { Setup } from './pages/Setup';
 import { ActivityLogContext, useActivityLogState } from './hooks/useActivityLog';
@@ -23,6 +24,7 @@ function ProtectedApp() {
           <Route path="/movies" element={<Movies />} />
           <Route path="/issues" element={<Issues />} />
           <Route path="/anime" element={<Anime />} />
+          <Route path="/early" element={<Early />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/log" element={<Log />} />
           <Route path="/" element={<Navigate to="/shows" replace />} />

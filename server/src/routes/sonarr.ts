@@ -9,7 +9,7 @@ const router = Router();
 /** Returns true if a single subtitle token represents English */
 function isEnglishToken(token: string): boolean {
   const t = token.toLowerCase().trim();
-  if (t === '' || t === 'und') return true; // empty or undetermined → assume English
+  if (t === '' || t === 'und' || t === 'unknown') return true; // empty, undetermined, or unknown → assume English
   if (t === 'english' || t === 'eng' || t === 'en') return true; // full name + ISO 639-1/2
   if (/^en-[a-z]{2,3}$/.test(t)) return true; // BCP-47: en-US, en-GB, en-AU, etc.
   if (/^english\s*\(/.test(t)) return true; // "English (US)", "English (SDH)", "English (United Kingdom)"
@@ -393,6 +393,89 @@ router.post('/mark-episode-failed', async (req: Request, res: Response) => {
     console.log(`[INFO] Triggered EpisodeSearch for ${episodeIds.length} episodes`);
 
     res.json({ success: true, blocklisted, deleted, searched: episodeIds.length });
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
+router.get('/early', async (_req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.sonarrUrl || !config.sonarrApiKey) {
+      res.status(400).json({ error: 'Sonarr not configured' });
+      return;
+    }
+    const now = new Date();
+    const allSeries = await sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey);
+
+    // Only check series that have files AND have a future airing (optimisation)
+    const candidates = allSeries.filter(s =>
+      s.statistics?.episodeFileCount > 0 &&
+      s.nextAiring &&
+      new Date(s.nextAiring) > now
+    );
+
+    if (candidates.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const episodeResults = await Promise.allSettled(
+      candidates.map(s => sonarrService.getEpisodes(config.sonarrUrl, config.sonarrApiKey, s.id))
+    );
+
+    const early: object[] = [];
+    candidates.forEach((s, i) => {
+      const result = episodeResults[i];
+      if (result.status !== 'fulfilled') return;
+      const earlyEps = result.value.filter(ep =>
+        ep.hasFile && ep.airDateUtc && new Date(ep.airDateUtc) > now
+      );
+      if (earlyEps.length === 0) return;
+      const poster = s.images.find(img => img.coverType === 'poster');
+      early.push({
+        seriesId: s.id,
+        title: s.title,
+        year: s.year,
+        slug: s.titleSlug,
+        service: 'sonarr',
+        posterUrl: poster ? `/api/sonarr/image${poster.url}` : undefined,
+        remotePosterUrl: poster?.remoteUrl,
+        episodes: earlyEps.map(ep => ({
+          episodeId: ep.id,
+          fileId: ep.episodeFileId,
+          seasonNumber: ep.seasonNumber,
+          episodeNumber: ep.episodeNumber,
+          title: ep.title,
+          airDateUtc: ep.airDateUtc,
+        })),
+      });
+    });
+
+    console.log(`[INFO] Sonarr early: ${early.length} series with pre-release files`);
+    res.json(early);
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
+router.delete('/episode-file/:fileId', async (req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.sonarrUrl || !config.sonarrApiKey) {
+      res.status(400).json({ error: 'Sonarr not configured' });
+      return;
+    }
+    const fileId = Number.parseInt(req.params['fileId']);
+    if (Number.isNaN(fileId)) {
+      res.status(400).json({ error: 'Invalid fileId' });
+      return;
+    }
+    await sonarrService.deleteEpisodeFile(config.sonarrUrl, config.sonarrApiKey, fileId);
+    console.log(`[INFO] Sonarr: deleted episode file ${fileId}`);
+    res.json({ success: true });
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
     res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });

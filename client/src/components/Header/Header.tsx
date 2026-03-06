@@ -34,6 +34,13 @@ export function Header() {
           <span className="sidebar__icon">⛩</span>
           <span className="sidebar__label">Anime</span>
         </NavLink>
+        <NavLink
+          to="/early"
+          className={({ isActive }) => `sidebar__link${isActive ? ' sidebar__link--active' : ''}`}
+        >
+          <span className="sidebar__icon">⏰</span>
+          <span className="sidebar__label">Early</span>
+        </NavLink>
         <div className="sidebar__spacer" />
         <div className="sidebar__divider" />
         <NavLink

@@ -90,6 +90,7 @@ export interface SonarrSeries {
   statistics: SonarrStatistics;
   dateAdded: string;
   previousAiring?: string;
+  nextAiring?: string;
 }
 
 export interface SonarrImage {

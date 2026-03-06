@@ -9,7 +9,7 @@ const router = Router();
 /** Returns true if a single subtitle token represents English */
 function isEnglishToken(token: string): boolean {
   const t = token.toLowerCase().trim();
-  if (t === '' || t === 'und') return true; // empty or undetermined → assume English
+  if (t === '' || t === 'und' || t === 'unknown') return true; // empty, undetermined, or unknown → assume English
   if (t === 'english' || t === 'eng' || t === 'en') return true; // full name + ISO 639-1/2
   if (/^en-[a-z]{2,3}$/.test(t)) return true; // BCP-47: en-US, en-GB, en-AU, etc.
   if (/^english\s*\(/.test(t)) return true; // "English (US)", "English (SDH)", "English (United Kingdom)"
@@ -277,6 +277,87 @@ router.post('/mark-movie-failed', async (req: Request, res: Response) => {
     await radarrService.searchMovie(config.radarrUrl, config.radarrApiKey, [movieId]);
     console.log(`[INFO] Triggered MoviesSearch for movie ${movieId}`);
 
+    res.json({ success: true });
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
+router.get('/early', async (_req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.radarrUrl || !config.radarrApiKey) {
+      res.status(400).json({ error: 'Radarr not configured' });
+      return;
+    }
+    const now = new Date();
+    const allMovies = await radarrService.getMovies(config.radarrUrl, config.radarrApiKey);
+
+    // Movies that have a file but haven't been released to home video yet
+    const earlyMovies = allMovies.filter(m => {
+      if (!m.hasFile || m.status === 'released') return false;
+      // Flag if at least one home release date exists and is in the future, or no home release dates at all
+      const digitalFuture = m.digitalRelease && new Date(m.digitalRelease) > now;
+      const physicalFuture = m.physicalRelease && new Date(m.physicalRelease) > now;
+      const noHomeRelease = !m.digitalRelease && !m.physicalRelease;
+      return digitalFuture || physicalFuture || noHomeRelease;
+    });
+
+    if (earlyMovies.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    // Fetch movie files to get file IDs
+    const fileResults = await Promise.allSettled(
+      earlyMovies.map(m => radarrService.getMovieFiles(config.radarrUrl, config.radarrApiKey, m.id))
+    );
+
+    const early: object[] = [];
+    earlyMovies.forEach((m, i) => {
+      const result = fileResults[i];
+      const files = result.status === 'fulfilled' ? result.value : [];
+      const fileId = files[0]?.id ?? null;
+      const poster = m.images.find(img => img.coverType === 'poster');
+      early.push({
+        id: m.id,
+        fileId,
+        title: m.title,
+        year: m.year,
+        slug: m.titleSlug,
+        service: 'radarr',
+        status: m.status,
+        digitalRelease: m.digitalRelease,
+        physicalRelease: m.physicalRelease,
+        inCinemas: m.inCinemas,
+        posterUrl: poster ? `/api/radarr/image${poster.url}` : undefined,
+        remotePosterUrl: poster?.remoteUrl,
+      });
+    });
+
+    console.log(`[INFO] Radarr early: ${early.length} movie(s) with pre-release files`);
+    res.json(early);
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
+router.delete('/movie-file/:fileId', async (req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.radarrUrl || !config.radarrApiKey) {
+      res.status(400).json({ error: 'Radarr not configured' });
+      return;
+    }
+    const fileId = Number.parseInt(req.params['fileId']);
+    if (Number.isNaN(fileId)) {
+      res.status(400).json({ error: 'Invalid fileId' });
+      return;
+    }
+    await radarrService.deleteMovieFile(config.radarrUrl, config.radarrApiKey, fileId);
+    console.log(`[INFO] Radarr: deleted movie file ${fileId}`);
     res.json({ success: true });
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
