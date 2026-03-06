@@ -334,6 +334,7 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
                     ep={ep}
                     seriesId={item.id}
                     plexUrl={epKey ? plexEpisodeUrls[epKey] : undefined}
+                    plexSubtitles={epKey ? plexSubtitleStreams[epKey] : undefined}
                     onDone={handleFileDone}
                   />
                 );
@@ -342,6 +343,11 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
           ))}
 
           {/* Radarr movie files */}
+          {item.service === 'radarr' && plexMovieStreams !== undefined && (
+            <div style={{ marginBottom: 8, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              <PlexSubtitleBadge streams={plexMovieStreams} />
+            </div>
+          )}
           {item.service === 'radarr' && movieFileIds.map(fileId => (
             <MovieFileRow key={fileId} fileId={fileId} movieId={item.id} onDone={handleFileDone} />
           ))}
