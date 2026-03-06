@@ -6,20 +6,25 @@ import * as plexService from '../services/plex.js';
 
 const router = Router();
 
-/** Returns true if a single subtitle token represents English */
-function isEnglishToken(token: string): boolean {
+/** Returns true if a subtitle token can be positively identified as a non-English language */
+function isDefinitelyNonEnglish(token: string): boolean {
   const t = token.toLowerCase().trim();
-  if (t === '' || t === 'und' || t === 'unknown') return true; // empty, undetermined, or unknown → assume English
-  if (t === 'english' || t === 'eng' || t === 'en') return true; // full name + ISO 639-1/2
-  if (/^en-[a-z]{2,3}$/.test(t)) return true; // BCP-47: en-US, en-GB, en-AU, etc.
-  if (/^english\s*\(/.test(t)) return true; // "English (US)", "English (SDH)", "English (United Kingdom)"
-  return false;
+  // Empty, undetermined, or any unrecognized value → cannot confirm non-English, assume English
+  if (!t || t === 'und' || t === 'unknown' || t === 'zxx') return false;
+  // Known English variants → not non-English
+  if (t === 'english' || t === 'eng' || t === 'en') return false;
+  if (/^en(-[a-z]{2,4})?$/.test(t)) return false; // en, en-US, en-GB, en-AU, etc.
+  if (/^english\s*\(/.test(t)) return false; // "English (US)", "English (SDH)", etc.
+  // Anything else is treated as a specific non-English language
+  return true;
 }
 
-/** Returns true if the subtitle string contains English or is empty (assume English if unnamed) */
+/** Returns true if the subtitle string contains English, is empty, or has any unrecognized track (assume English) */
 function hasEnglishSubs(subtitles: string | undefined): boolean {
   if (!subtitles || subtitles.trim() === '') return true;
-  return subtitles.split('/').some(s => isEnglishToken(s.trim()));
+  const tokens = subtitles.split('/').map(s => s.trim());
+  // Only flag if ALL tokens are positively identified as non-English
+  return !tokens.every(t => isDefinitelyNonEnglish(t));
 }
 
 
