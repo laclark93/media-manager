@@ -175,7 +175,9 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         const subs = f.mediaInfo?.subtitles?.trim();
         const flagged = !subs ? true : !hasEnglishSubs(subs);
         if (flagged) {
-          console.log(`[SUBTITLE-CHECK] "${s.title}" S${String(f.seasonNumber).padStart(2,'0')} fileId=${f.id} subtitles=${JSON.stringify(f.mediaInfo?.subtitles ?? null)}`);
+          const ep = fileToEpisode.get(f.id);
+          const epLabel = ep ? `S${String(f.seasonNumber).padStart(2,'0')}E${String(ep.episodeNumber).padStart(2,'0')}` : `S${String(f.seasonNumber).padStart(2,'0')}E??`;
+          console.log(`[TRACE] subtitle-check flag: "${s.title}" ${epLabel} fileId=${f.id} subtitles=${JSON.stringify(f.mediaInfo?.subtitles ?? null)}`);
         }
         return flagged;
       });
@@ -217,8 +219,10 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         missing.map(async (item) => {
           try {
             const plexMatches = await plexService.search(config.plexToken, item.title, 'show');
+            console.log(`[TRACE] plex search "${item.title}": ${plexMatches.length} result(s)`);
             if (plexMatches.length === 0) return item;
             const match = plexMatches.find((r: any) => r.year === item.year) ?? plexMatches[0];
+            console.log(`[TRACE] plex match: "${match.title}" (${match.year}) ratingKey=${match.ratingKey}`);
 
             const plexEpisodes = await plexService.getShowEpisodes(config.plexToken, match.ratingKey);
             const plexEpMap = new Map<string, string>();
@@ -226,6 +230,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               const key = `S${String(ep.seasonNumber).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}`;
               plexEpMap.set(key, ep.ratingKey);
             }
+            console.log(`[TRACE] plex episodes found: ${plexEpisodes.length}`);
 
             // Fetch streams only for affected episodes that exist in Plex
             const targets = (item.affectedEpisodes as any[])
@@ -236,6 +241,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               })
               .filter(x => x.ratingKey);
 
+            console.log(`[TRACE] plex targets for stream check: ${targets.map(x => x.key).join(', ') || 'none'}`);
             if (targets.length === 0) return item;
 
             const streamResults = await Promise.allSettled(
@@ -245,15 +251,24 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
             const plexHasEngSub = new Set<string>();
             targets.forEach((x, i) => {
               const r = streamResults[i];
-              if (r.status === 'fulfilled' && r.value.some(s =>
-                s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
-                s.language?.toLowerCase() === 'english'
-              )) {
-                plexHasEngSub.add(x.key);
+              if (r.status === 'fulfilled') {
+                const subStreams = r.value.filter((s: any) => s.streamType === 3);
+                console.log(`[TRACE] plex streams for ${x.key}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
+                if (r.value.some((s: any) =>
+                  s.languageCode?.toLowerCase() === 'en' || s.languageCode?.toLowerCase() === 'eng' ||
+                  s.language?.toLowerCase() === 'english'
+                )) {
+                  plexHasEngSub.add(x.key);
+                }
+              } else {
+                console.log(`[TRACE] plex stream fetch failed for ${x.key}: ${r.reason}`);
               }
             });
 
-            if (plexHasEngSub.size === 0) return item;
+            if (plexHasEngSub.size === 0) {
+              console.log(`[TRACE] plex found no English subs for "${item.title}" — keeping flagged`);
+              return item;
+            }
 
             const filteredEps = (item.affectedEpisodes as any[]).filter(e => {
               if (e.episodeNumber == null) return true;
@@ -261,13 +276,12 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               return !plexHasEngSub.has(key);
             });
 
-            if (plexHasEngSub.size > 0) {
-              console.log(`[INFO] Sonarr subtitle-check: Plex confirmed English subs for ${plexHasEngSub.size} episode(s) in "${item.title}" — removing false positives`);
-            }
+            console.log(`[TRACE] plex cleared ${plexHasEngSub.size} episode(s) in "${item.title}": ${[...plexHasEngSub].join(', ')}`);
 
             return { ...item, affectedEpisodes: filteredEps, affectedFiles: filteredEps.length };
-          } catch {
-            return item; // Plex lookup failed, keep original
+          } catch (err) {
+            console.log(`[TRACE] plex lookup failed for "${item.title}": ${err instanceof Error ? err.message : err}`);
+            return item;
           }
         })
       );
