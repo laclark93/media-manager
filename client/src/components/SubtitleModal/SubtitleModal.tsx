@@ -333,7 +333,7 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
                     key={ep.fileId}
                     ep={ep}
                     seriesId={item.id}
-                    plexUrl={epKey ? plexEpisodeUrls[epKey] : undefined}
+                    plexUrl={epKey ? (plexEpisodeUrls[epKey] ?? plexShowUrl ?? undefined) : (plexShowUrl ?? undefined)}
                     plexSubtitles={epKey ? plexSubtitleStreams[epKey] : undefined}
                     onDone={handleFileDone}
                   />
