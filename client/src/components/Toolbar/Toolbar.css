@@ -6,6 +6,25 @@
   flex-wrap: wrap;
 }
 
+.toolbar__search-input {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  width: 160px;
+}
+
+.toolbar__search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.toolbar__search-input::placeholder {
+  color: var(--text-muted);
+}
+
 .toolbar__sort {
   display: flex;
   align-items: center;

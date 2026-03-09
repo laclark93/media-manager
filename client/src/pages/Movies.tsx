@@ -45,7 +45,7 @@ export function Movies() {
     [movies]
   );
 
-  const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, totalCount, filteredCount } =
+  const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, searchQuery, setSearchQuery, totalCount, filteredCount } =
     useFilter(items, thresholds, 'movies');
 
   if (loading) return <div className="page"><div className="loading">Loading movies</div></div>;
@@ -60,6 +60,8 @@ export function Movies() {
         onSortChange={setSortBy}
         onSortDirChange={setSortDir}
         onFilterChange={setStalenessFilter}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
         totalCount={totalCount}
         filteredCount={filteredCount}
         onRefresh={refresh}

@@ -26,6 +26,7 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
     return 'asc';
   });
   const [stalenessFilter, setStalenessFilter] = useState<StalenessLevel | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const setSortBy = (v: SortOption) => {
     _setSortBy(v);
@@ -38,6 +39,11 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
 
   const filtered = useMemo(() => {
     let result = [...items];
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(item => item.title.toLowerCase().includes(q));
+    }
 
     if (stalenessFilter !== 'all') {
       result = result.filter(item => getStaleness(item.dateAdded, thresholds, item.lastAired) === stalenessFilter);
@@ -79,13 +85,14 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
     });
 
     return result;
-  }, [items, sortBy, sortDir, stalenessFilter, thresholds]);
+  }, [items, sortBy, sortDir, stalenessFilter, searchQuery, thresholds]);
 
   return {
     filtered,
     sortBy, setSortBy,
     sortDir, setSortDir,
     stalenessFilter, setStalenessFilter,
+    searchQuery, setSearchQuery,
     totalCount: items.length,
     filteredCount: filtered.length,
   };

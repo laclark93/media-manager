@@ -29,6 +29,8 @@ interface ToolbarProps {
   onSearchAll?: () => Promise<void>;
   searchAllLabel?: string;
   sortOptions?: SortOptionDef[];
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
 }
 
 const STALENESS_OPTIONS: { value: StalenessLevel | 'all'; label: string }[] = [
@@ -53,6 +55,8 @@ export function Toolbar({
   onSearchAll,
   searchAllLabel,
   sortOptions = DEFAULT_SORT_OPTIONS,
+  searchQuery,
+  onSearchQueryChange,
 }: ToolbarProps) {
   const [searchState, setSearchState] = useState<'idle' | 'searching' | 'queued'>('idle');
 
@@ -70,6 +74,17 @@ export function Toolbar({
 
   return (
     <div className="toolbar">
+      {onSearchQueryChange !== undefined && (
+        <div className="toolbar__search">
+          <input
+            className="toolbar__search-input"
+            type="text"
+            placeholder="Search..."
+            value={searchQuery ?? ''}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+          />
+        </div>
+      )}
       <div className="toolbar__sort">
         <label>Sort:</label>
         <select

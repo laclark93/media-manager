@@ -51,7 +51,7 @@ export function Shows() {
     [series]
   );
 
-  const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, totalCount, filteredCount } =
+  const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, searchQuery, setSearchQuery, totalCount, filteredCount } =
     useFilter(items, thresholds, 'shows');
 
   const selectedSeries = series.find(s => s.id === selectedSeriesId);
@@ -94,6 +94,8 @@ export function Shows() {
             onSortChange={setSortBy}
             onSortDirChange={setSortDir}
             onFilterChange={setStalenessFilter}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
             totalCount={totalCount}
             filteredCount={filteredCount}
             onRefresh={refresh}
