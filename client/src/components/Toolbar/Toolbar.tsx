@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StalenessLevel, SortOption } from '../../types/common';
 import './Toolbar.css';
 
@@ -12,6 +13,8 @@ interface ToolbarProps {
   filteredCount: number;
   onRefresh?: () => void;
   refreshing?: boolean;
+  onSearchAll?: () => Promise<void>;
+  searchAllLabel?: string;
 }
 
 const STALENESS_OPTIONS: { value: StalenessLevel | 'all'; label: string }[] = [
@@ -33,7 +36,23 @@ export function Toolbar({
   filteredCount,
   onRefresh,
   refreshing,
+  onSearchAll,
+  searchAllLabel,
 }: ToolbarProps) {
+  const [searchState, setSearchState] = useState<'idle' | 'searching' | 'queued'>('idle');
+
+  const handleSearchAll = async () => {
+    if (!onSearchAll || searchState !== 'idle') return;
+    setSearchState('searching');
+    try {
+      await onSearchAll();
+      setSearchState('queued');
+      setTimeout(() => setSearchState('idle'), 3000);
+    } catch {
+      setSearchState('idle');
+    }
+  };
+
   return (
     <div className="toolbar">
       <div className="toolbar__sort">
@@ -71,6 +90,16 @@ export function Toolbar({
         <span className="toolbar__count">
           {filteredCount === totalCount ? totalCount : `${filteredCount} / ${totalCount}`}
         </span>
+        {onSearchAll && (
+          <button
+            className={`toolbar__search-all-btn${searchState === 'queued' ? ' toolbar__search-all-btn--queued' : ''}`}
+            onClick={handleSearchAll}
+            disabled={searchState !== 'idle' || filteredCount === 0}
+            title={searchAllLabel || 'Search All'}
+          >
+            {searchState === 'searching' ? 'Searching...' : searchState === 'queued' ? 'Queued' : (searchAllLabel || `Search All (${filteredCount})`)}
+          </button>
+        )}
         {onRefresh && (
           <button
             className="toolbar__refresh-btn"

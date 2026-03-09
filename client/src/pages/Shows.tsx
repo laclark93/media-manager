@@ -67,6 +67,14 @@ export function Shows() {
         totalCount={totalCount}
         filteredCount={filteredCount}
         onRefresh={refresh}
+        onSearchAll={async () => {
+          const eid = addEntry('Search All Shows', `${filtered.length} shows`);
+          try {
+            await Promise.all(filtered.map(s => searchSeries(s.id)));
+            updateEntry(eid, 'success', `${filtered.length} show(s) queued`);
+          } catch { updateEntry(eid, 'error', 'Failed'); }
+        }}
+        searchAllLabel={`Search All (${filteredCount})`}
       />
       {filtered.length === 0 ? (
         <div className="empty-state">

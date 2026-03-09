@@ -57,6 +57,14 @@ export function Movies() {
         totalCount={totalCount}
         filteredCount={filteredCount}
         onRefresh={refresh}
+        onSearchAll={async () => {
+          const eid = addEntry('Search All Movies', `${filtered.length} movies`);
+          try {
+            await Promise.all(filtered.map(m => searchMovie(m.id)));
+            updateEntry(eid, 'success', `${filtered.length} movie(s) queued`);
+          } catch { updateEntry(eid, 'error', 'Failed'); }
+        }}
+        searchAllLabel={`Search All (${filteredCount})`}
       />
       {filtered.length === 0 ? (
         <div className="empty-state">
