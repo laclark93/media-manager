@@ -128,24 +128,34 @@ export async function findShowByFilePath(
 
   if (tvSections.length === 0) return null;
 
-  // Extract series folder from file paths (e.g. /tv/Full Moon wo Sagashite/Season 01/ep.mkv → /tv/Full Moon wo Sagashite)
+  // Strip trailing year suffix like " (2002)" from folder names for fuzzy matching
+  const stripYear = (name: string) => name.replace(/\s*\(\d{4}\)\s*$/, '').trim();
+
+  // Extract series folder from file paths (e.g. /tv/Full Moon wo Sagashite (2002)/Season 01/ep.mkv)
   // Use the parent-of-parent directory (file → season folder → series folder)
-  const seriesFolders = new Set<string>();
+  const seriesFolders: string[] = [];
   for (const fp of filePaths) {
     const normalized = fp.replace(/\\/g, '/');
     const parts = normalized.split('/');
     if (parts.length >= 3) {
-      // Remove filename and season folder to get series folder name
-      const seriesFolder = parts[parts.length - 3];
-      seriesFolders.add(seriesFolder.toLowerCase());
+      const seriesFolder = parts[parts.length - 3].toLowerCase();
+      if (!seriesFolders.includes(seriesFolder)) seriesFolders.push(seriesFolder);
     }
   }
 
-  if (seriesFolders.size === 0) {
+  if (seriesFolders.length === 0) {
     console.log(`[TRACE] plex findShowByFilePath: no series folders extracted from ${filePaths.length} paths (first: ${filePaths[0] ?? 'none'})`);
     return null;
   }
-  console.log(`[TRACE] plex findShowByFilePath: looking for folders [${[...seriesFolders].join(', ')}]`);
+
+  // Build set of names to match: exact folder + year-stripped version
+  const namesToMatch = new Set<string>();
+  for (const f of seriesFolders) {
+    namesToMatch.add(f);
+    const stripped = stripYear(f);
+    if (stripped !== f) namesToMatch.add(stripped);
+  }
+  console.log(`[TRACE] plex findShowByFilePath: looking for folders [${[...namesToMatch].join(', ')}]`);
 
   // Browse each TV section and match by Location
   for (const section of tvSections) {
@@ -155,20 +165,19 @@ export async function findShowByFilePath(
     const shows = allResp.data.MediaContainer?.Metadata || [];
     console.log(`[TRACE] plex findShowByFilePath: section "${section.title}" has ${shows.length} shows`);
 
-    // Log first show's Location to verify the data shape
-    if (shows.length > 0) {
-      const sample = shows[0];
-      console.log(`[TRACE] plex findShowByFilePath: sample show "${sample.title}" Location=${JSON.stringify(sample.Location ?? 'undefined')} keys=${Object.keys(sample).filter(k => /loc|path|dir|file/i.test(k)).join(',') || 'none'}`);
-    }
-
     for (const show of shows) {
-      // Plex shows have Location array with directory paths
       const locations: string[] = (show.Location || []).map((l: any) => l.path?.replace(/\\/g, '/') || '');
       for (const loc of locations) {
-        const locFolder = loc.split('/').pop()?.toLowerCase();
-        if (locFolder && seriesFolders.has(locFolder)) {
-          console.log(`[TRACE] plex findShowByFilePath: matched "${show.title}" via folder "${locFolder}"`);
-          return { ratingKey: show.ratingKey, title: show.title, year: show.year ?? 0 };
+        const locFolder = (loc.split('/').pop() || '').toLowerCase();
+        if (!locFolder) continue;
+        const locStripped = stripYear(locFolder);
+
+        // Match: exact, year-stripped, or one starts with the other (e.g. "full moon" ↔ "full moon wo sagashite")
+        for (const name of namesToMatch) {
+          if (locFolder === name || locStripped === name || locFolder.startsWith(name) || name.startsWith(locFolder) || locStripped.startsWith(name) || name.startsWith(locStripped)) {
+            console.log(`[TRACE] plex findShowByFilePath: matched "${show.title}" via folder "${locFolder}" ↔ "${name}"`);
+            return { ratingKey: show.ratingKey, title: show.title, year: show.year ?? 0 };
+          }
         }
       }
     }
@@ -184,6 +193,7 @@ export async function findMovieByFilePath(
   filePaths: string[],
 ): Promise<{ ratingKey: string; title: string; year: number } | null> {
   const server = await discoverServer(token);
+  const stripYear = (name: string) => name.replace(/\s*\(\d{4}\)\s*$/, '').trim();
 
   const sectionsResp = await client(server.uri, token).get('/library/sections');
   const sections = sectionsResp.data.MediaContainer?.Directory || [];
@@ -191,19 +201,25 @@ export async function findMovieByFilePath(
 
   if (movieSections.length === 0) return null;
 
-  // Extract movie folder from file paths (e.g. /movies/Full Moon (2020)/movie.mkv → Full Moon (2020))
-  const movieFolders = new Set<string>();
+  const folderNames: string[] = [];
   for (const fp of filePaths) {
     const normalized = fp.replace(/\\/g, '/');
     const parts = normalized.split('/');
     if (parts.length >= 2) {
-      const movieFolder = parts[parts.length - 2];
-      movieFolders.add(movieFolder.toLowerCase());
+      const folder = parts[parts.length - 2].toLowerCase();
+      if (!folderNames.includes(folder)) folderNames.push(folder);
     }
   }
 
-  if (movieFolders.size === 0) return null;
-  console.log(`[TRACE] plex findMovieByFilePath: looking for folders [${[...movieFolders].join(', ')}]`);
+  if (folderNames.length === 0) return null;
+
+  const namesToMatch = new Set<string>();
+  for (const f of folderNames) {
+    namesToMatch.add(f);
+    const stripped = stripYear(f);
+    if (stripped !== f) namesToMatch.add(stripped);
+  }
+  console.log(`[TRACE] plex findMovieByFilePath: looking for folders [${[...namesToMatch].join(', ')}]`);
 
   for (const section of movieSections) {
     const allResp = await client(server.uri, token).get(`/library/sections/${section.key}/all`, {
@@ -214,10 +230,15 @@ export async function findMovieByFilePath(
     for (const movie of movies) {
       const locations: string[] = (movie.Location || []).map((l: any) => l.path?.replace(/\\/g, '/') || '');
       for (const loc of locations) {
-        const locFolder = loc.split('/').pop()?.toLowerCase();
-        if (locFolder && movieFolders.has(locFolder)) {
-          console.log(`[TRACE] plex findMovieByFilePath: matched "${movie.title}" via folder "${locFolder}"`);
-          return { ratingKey: movie.ratingKey, title: movie.title, year: movie.year ?? 0 };
+        const locFolder = (loc.split('/').pop() || '').toLowerCase();
+        if (!locFolder) continue;
+        const locStripped = stripYear(locFolder);
+
+        for (const name of namesToMatch) {
+          if (locFolder === name || locStripped === name || locFolder.startsWith(name) || name.startsWith(locFolder) || locStripped.startsWith(name) || name.startsWith(locStripped)) {
+            console.log(`[TRACE] plex findMovieByFilePath: matched "${movie.title}" via folder "${locFolder}" ↔ "${name}"`);
+            return { ratingKey: movie.ratingKey, title: movie.title, year: movie.year ?? 0 };
+          }
         }
       }
     }
