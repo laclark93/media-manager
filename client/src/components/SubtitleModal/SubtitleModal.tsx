@@ -11,6 +11,14 @@ interface SubtitleStream {
   displayTitle?: string;
 }
 
+interface HistoryRecord {
+  id: number;
+  eventType: string;
+  date: string;
+  sourceTitle?: string;
+  quality?: string;
+}
+
 type ActionState = 'idle' | 'loading' | 'done' | 'error';
 
 interface SubtitleModalProps {
@@ -47,6 +55,34 @@ function PlexSubtitleBadge({ streams }: Readonly<{ streams: SubtitleStream[] | u
   );
 }
 
+function eventTypeLabel(eventType: string): string {
+  switch (eventType) {
+    case 'grabbed': return 'Grabbed';
+    case 'downloadFolderImported': return 'Imported';
+    case 'downloadFailed': return 'Failed';
+    case 'episodeFileDeleted': return 'Deleted';
+    case 'episodeFileRenamed': return 'Renamed';
+    case 'downloadIgnored': return 'Ignored';
+    default: return eventType;
+  }
+}
+
+function eventTypeColor(eventType: string): string {
+  switch (eventType) {
+    case 'grabbed': return 'var(--accent, #3498db)';
+    case 'downloadFolderImported': return 'var(--success, #4caf50)';
+    case 'downloadFailed': return 'var(--danger, #e74c3c)';
+    case 'episodeFileDeleted': return 'var(--danger, #e74c3c)';
+    default: return 'var(--text-muted)';
+  }
+}
+
+function formatHistoryDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
 function EpisodeRow({
   ep,
   seriesId,
@@ -64,6 +100,9 @@ function EpisodeRow({
 }) {
   const [state, setState] = useState<ActionState>('idle');
   const [errMsg, setErrMsg] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<HistoryRecord[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const label =
     ep.seasonNumber != null && ep.episodeNumber != null
@@ -86,32 +125,82 @@ function EpisodeRow({
     }
   };
 
+  const handleToggleHistory = async () => {
+    if (showHistory) {
+      setShowHistory(false);
+      return;
+    }
+    setShowHistory(true);
+    if (history !== null || !ep.episodeId) return;
+    setHistoryLoading(true);
+    try {
+      const records = await fetchApi<HistoryRecord[]>(`/api/sonarr/episode-history/${ep.episodeId}`);
+      setHistory(records);
+    } catch {
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   return (
-    <div className="modal__episode" title={errMsg || parentErr || (ep.subtitles ? `Subs: ${ep.subtitles}` : undefined)}>
-      <span className="modal__ep-number">{label}</span>
-      <span className="modal__ep-title" title={ep.title || undefined}>{ep.title || ''}</span>
-      <span className="modal__ep-date">{ep.subtitles || 'none'}</span>
-      <PlexSubtitleBadge streams={plexSubtitles} />
-      {plexUrl && (
-        <a
-          className="modal__ep-search"
-          href={plexUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{ textDecoration: 'none', background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+    <>
+      <div className="modal__episode" title={errMsg || parentErr || (ep.subtitles ? `Subs: ${ep.subtitles}` : undefined)}>
+        <span className="modal__ep-number">{label}</span>
+        <span className="modal__ep-title" title={ep.title || undefined}>{ep.title || ''}</span>
+        <span className="modal__ep-date">{ep.subtitles || 'none'}</span>
+        <PlexSubtitleBadge streams={plexSubtitles} />
+        {ep.episodeId && (
+          <button
+            className="modal__ep-search"
+            onClick={handleToggleHistory}
+            style={{ background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+            title="View episode history"
+          >
+            {showHistory ? 'Hide' : 'History'}
+          </button>
+        )}
+        {plexUrl && (
+          <a
+            className="modal__ep-search"
+            href={plexUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{ textDecoration: 'none', background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+          >
+            Plex
+          </a>
+        )}
+        <button
+          className={`modal__ep-search${state === 'done' ? ' modal__search-all--queued' : ' modal__ep-search--danger'}`}
+          disabled={state === 'loading' || state === 'done'}
+          onClick={handleMarkFailed}
+          title={state === 'done' ? 'Marked as failed' : state === 'error' ? errMsg : 'Mark as failed and search for replacement'}
         >
-          Plex
-        </a>
+          {state === 'loading' ? '...' : state === 'done' ? 'Queued' : state === 'error' ? 'Retry' : 'Mark As Failed'}
+        </button>
+      </div>
+      {showHistory && (
+        <div className="modal__history">
+          {historyLoading && <div className="modal__history-loading">Loading history...</div>}
+          {history !== null && history.length === 0 && !historyLoading && (
+            <div className="modal__history-empty">No history found</div>
+          )}
+          {history && history.length > 0 && history.map(r => (
+            <div key={r.id} className="modal__history-row">
+              <span className="modal__history-type" style={{ color: eventTypeColor(r.eventType) }}>
+                {eventTypeLabel(r.eventType)}
+              </span>
+              <span className="modal__history-date">{formatHistoryDate(r.date)}</span>
+              {r.quality && <span className="modal__history-quality">{r.quality}</span>}
+              {r.sourceTitle && (
+                <span className="modal__history-source" title={r.sourceTitle}>{r.sourceTitle}</span>
+              )}
+            </div>
+          ))}
+        </div>
       )}
-      <button
-        className={`modal__ep-search${state === 'done' ? ' modal__search-all--queued' : ' modal__ep-search--danger'}`}
-        disabled={state === 'loading' || state === 'done'}
-        onClick={handleMarkFailed}
-        title={state === 'done' ? 'Marked as failed' : state === 'error' ? errMsg : 'Mark as failed and search for replacement'}
-      >
-        {state === 'loading' ? '...' : state === 'done' ? 'Queued' : state === 'error' ? 'Retry' : 'Mark As Failed'}
-      </button>
-    </div>
+    </>
   );
 }
 

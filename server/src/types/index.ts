@@ -132,6 +132,9 @@ export interface SonarrHistoryRecord {
   episodeId: number;
   seriesId: number;
   eventType: string; // 'grabbed' | 'downloadFolderImported' | 'downloadFailed' | etc.
+  sourceTitle?: string;
+  date?: string;
+  quality?: { quality?: { name?: string } };
 }
 
 export interface RadarrHistoryRecord {

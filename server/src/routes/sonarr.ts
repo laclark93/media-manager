@@ -349,6 +349,33 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
   }
 });
 
+router.get('/episode-history/:episodeId', async (req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.sonarrUrl || !config.sonarrApiKey) {
+      res.status(400).json({ error: 'Sonarr not configured' });
+      return;
+    }
+    const episodeId = Number(req.params.episodeId);
+    if (!episodeId) {
+      res.status(400).json({ error: 'episodeId is required' });
+      return;
+    }
+    const records = await sonarrService.getEpisodeHistory(config.sonarrUrl, config.sonarrApiKey, episodeId);
+    const mapped = records.map(r => ({
+      id: r.id,
+      eventType: r.eventType,
+      date: r.date,
+      sourceTitle: r.sourceTitle,
+      quality: r.quality?.quality?.name,
+    }));
+    res.json(mapped);
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
 router.post('/mark-failed', async (req: Request, res: Response) => {
   try {
     const config = getConfig();

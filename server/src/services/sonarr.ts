@@ -64,6 +64,13 @@ export async function getSeriesHistory(baseUrl: string, apiKey: string, seriesId
   return resp.data ?? [];
 }
 
+export async function getEpisodeHistory(baseUrl: string, apiKey: string, episodeId: number): Promise<SonarrHistoryRecord[]> {
+  const resp = await client(baseUrl, apiKey).get('/api/v3/history', {
+    params: { episodeId, pageSize: 50, sortKey: 'date', sortDirection: 'descending' },
+  });
+  return resp.data?.records ?? [];
+}
+
 export async function markHistoryFailed(baseUrl: string, apiKey: string, historyId: number): Promise<void> {
   await client(baseUrl, apiKey).post(`/api/v3/history/failed/${historyId}`);
 }
