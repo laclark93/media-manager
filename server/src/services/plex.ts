@@ -141,15 +141,25 @@ export async function findShowByFilePath(
     }
   }
 
-  if (seriesFolders.size === 0) return null;
+  if (seriesFolders.size === 0) {
+    console.log(`[TRACE] plex findShowByFilePath: no series folders extracted from ${filePaths.length} paths (first: ${filePaths[0] ?? 'none'})`);
+    return null;
+  }
   console.log(`[TRACE] plex findShowByFilePath: looking for folders [${[...seriesFolders].join(', ')}]`);
 
   // Browse each TV section and match by Location
   for (const section of tvSections) {
     const allResp = await client(server.uri, token).get(`/library/sections/${section.key}/all`, {
-      params: { type: 2 },
+      params: { type: 2, includeGuids: 0 },
     });
     const shows = allResp.data.MediaContainer?.Metadata || [];
+    console.log(`[TRACE] plex findShowByFilePath: section "${section.title}" has ${shows.length} shows`);
+
+    // Log first show's Location to verify the data shape
+    if (shows.length > 0) {
+      const sample = shows[0];
+      console.log(`[TRACE] plex findShowByFilePath: sample show "${sample.title}" Location=${JSON.stringify(sample.Location ?? 'undefined')} keys=${Object.keys(sample).filter(k => /loc|path|dir|file/i.test(k)).join(',') || 'none'}`);
+    }
 
     for (const show of shows) {
       // Plex shows have Location array with directory paths
