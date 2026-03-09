@@ -778,7 +778,7 @@ export function MissingTimeline({ getMissingTimeline }: MissingTimelineProps) {
   }
 
   return (
-    <div>
+    <div className="missing-timeline-root">
       <SummaryStats entries={entries} />
 
       <div className="timeline-views">

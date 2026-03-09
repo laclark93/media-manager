@@ -1,3 +1,9 @@
+/* ── Root wrapper ───────────────────────────────────────── */
+.missing-timeline-root {
+  max-width: 100%;
+  overflow: hidden;
+}
+
 /* ── View switcher ───────────────────────────────────────── */
 .timeline-views {
   display: flex;
