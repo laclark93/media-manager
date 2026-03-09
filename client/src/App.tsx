@@ -10,26 +10,30 @@ import { Early } from './pages/Early';
 import { Login } from './pages/Login';
 import { Setup } from './pages/Setup';
 import { ActivityLogContext, useActivityLogState } from './hooks/useActivityLog';
+import { SearchQueueContext, useSearchQueueState } from './hooks/useSearchQueue';
 import { AuthContext, useAuthState } from './hooks/useAuth';
 import './App.css';
 
 function ProtectedApp() {
   const activityLog = useActivityLogState();
+  const searchQueue = useSearchQueueState();
   return (
     <ActivityLogContext.Provider value={activityLog}>
-      <Header />
-      <div className="app-content">
-        <Routes>
-          <Route path="/shows" element={<Shows />} />
-          <Route path="/movies" element={<Movies />} />
-          <Route path="/issues" element={<Issues />} />
-          <Route path="/anime" element={<Anime />} />
-          <Route path="/early" element={<Early />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/log" element={<Log />} />
-          <Route path="/" element={<Navigate to="/shows" replace />} />
-        </Routes>
-      </div>
+      <SearchQueueContext.Provider value={searchQueue}>
+        <Header />
+        <div className="app-content">
+          <Routes>
+            <Route path="/shows" element={<Shows />} />
+            <Route path="/movies" element={<Movies />} />
+            <Route path="/issues" element={<Issues />} />
+            <Route path="/anime" element={<Anime />} />
+            <Route path="/early" element={<Early />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/log" element={<Log />} />
+            <Route path="/" element={<Navigate to="/shows" replace />} />
+          </Routes>
+        </div>
+      </SearchQueueContext.Provider>
     </ActivityLogContext.Provider>
   );
 }

@@ -3,6 +3,7 @@ import { useSonarr } from '../hooks/useSonarr';
 import { useSettings } from '../hooks/useSettings';
 import { useFilter } from '../hooks/useFilter';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { useSearchQueue } from '../hooks/useSearchQueue';
 import { getStaleness } from '../utils/staleness';
 import { getSonarrPosterUrl, getSonarrRemotePoster } from '../utils/images';
 import { MediaCard } from '../components/MediaCard/MediaCard';
@@ -29,6 +30,7 @@ export function Shows() {
   const { series, loading, error, searchSeries, searchEpisodes, getMissingEpisodes, getMissingTimeline, refresh } = useSonarr();
   const { settings } = useSettings();
   const { addEntry, updateEntry } = useActivityLog();
+  const { startSearch } = useSearchQueue();
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<ShowsTab>('cards');
 
@@ -101,12 +103,13 @@ export function Shows() {
             onRefresh={refresh}
             onSearchAll={async () => {
               const eid = addEntry('Search All Shows', `${filtered.length} shows`);
-              try {
-                for (const s of filtered) {
-                  await searchSeries(s.id);
-                }
-                updateEntry(eid, 'success', `${filtered.length} show(s) queued`);
-              } catch { updateEntry(eid, 'error', 'Failed'); }
+              startSearch(
+                filtered.map((s: ShowItem) => ({ id: s.id, title: s.title, type: 'show' as const })),
+                searchSeries,
+                eid,
+                (count: number) => updateEntry(eid, 'success', `${count} show(s) queued`),
+                () => updateEntry(eid, 'error', 'Failed'),
+              );
             }}
             searchAllLabel={`Search All (${filteredCount})`}
           />

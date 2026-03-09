@@ -3,6 +3,7 @@ import { useRadarr } from '../hooks/useRadarr';
 import { useSettings } from '../hooks/useSettings';
 import { useFilter } from '../hooks/useFilter';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { useSearchQueue } from '../hooks/useSearchQueue';
 import { getStaleness } from '../utils/staleness';
 import { getRadarrPosterUrl, getRadarrRemotePoster } from '../utils/images';
 import { MediaCard } from '../components/MediaCard/MediaCard';
@@ -28,6 +29,7 @@ export function Movies() {
   const { movies, loading, error, searchMovie, refresh } = useRadarr();
   const { settings } = useSettings();
   const { addEntry, updateEntry } = useActivityLog();
+  const { startSearch } = useSearchQueue();
 
   const thresholds = settings?.stalenessThresholds;
   const radarrUrl = settings?.radarrUrl || '';
@@ -67,12 +69,13 @@ export function Movies() {
         onRefresh={refresh}
         onSearchAll={async () => {
           const eid = addEntry('Search All Movies', `${filtered.length} movies`);
-          try {
-            for (const m of filtered) {
-              await searchMovie(m.id);
-            }
-            updateEntry(eid, 'success', `${filtered.length} movie(s) queued`);
-          } catch { updateEntry(eid, 'error', 'Failed'); }
+          startSearch(
+            filtered.map((m: MovieItem) => ({ id: m.id, title: m.title, type: 'movie' as const })),
+            searchMovie,
+            eid,
+            (count: number) => updateEntry(eid, 'success', `${count} movie(s) queued`),
+            () => updateEntry(eid, 'error', 'Failed'),
+          );
         }}
         searchAllLabel={`Search All (${filteredCount})`}
         sortOptions={MOVIE_SORT_OPTIONS}
