@@ -685,7 +685,7 @@ function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
         <span className="calendar__legend-label">Less</span>
         <div className="calendar__legend-scale">
           {[0, 0.2, 0.4, 0.6, 0.8, 1].map(v => (
-            <div key={v} className="calendar__legend-swatch" style={{ background: `rgba(52, 152, 219, ${0.15 + 0.6 * v})` }} />
+            <div key={v} className="calendar__legend-swatch" style={{ background: `hsl(${120 - 120 * v}, 65%, 42%)` }} />
           ))}
         </div>
         <span className="calendar__legend-label">More</span>
