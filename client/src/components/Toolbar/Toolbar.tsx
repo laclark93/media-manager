@@ -82,6 +82,7 @@ export function Toolbar({
   const hasActiveRange = missingRange !== null;
   const rangeMin = missingRange ? missingRange[0] : 0;
   const rangeMax = missingRange ? missingRange[1] : maxMissing;
+  const hasAnyFilter = stalenessFilter !== 'all' || hasActiveRange;
 
   const handleSearchAll = async () => {
     if (!onSearchAll || searchState !== 'idle') return;
@@ -128,69 +129,107 @@ export function Toolbar({
         </button>
       </div>
 
-      <div className="toolbar__filters">
-        {STALENESS_OPTIONS.map((opt) => (
+      <div className="toolbar__actions">
+        <div className="toolbar__filter-wrapper" ref={filterRef}>
           <button
-            key={opt.value}
-            className={`toolbar__chip${stalenessFilter === opt.value ? ' toolbar__chip--active' : ''}`}
-            onClick={() => onFilterChange(opt.value)}
+            className={`toolbar__filter-btn${hasAnyFilter ? ' toolbar__filter-btn--active' : ''}${filterOpen ? ' toolbar__filter-btn--open' : ''}`}
+            onClick={() => setFilterOpen(o => !o)}
+            title="Filters"
           >
-            {opt.label}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            {hasAnyFilter && <span className="toolbar__filter-dot" />}
           </button>
-        ))}
-        {onMissingRangeChange && maxMissing > 0 && (
-          <div className="toolbar__filter-wrapper" ref={filterRef}>
-            <button
-              className={`toolbar__chip${hasActiveRange ? ' toolbar__chip--active' : ''}`}
-              onClick={() => setFilterOpen(o => !o)}
-            >
-              {hasActiveRange ? `${rangeMin}–${rangeMax} Missing` : 'Missing #'}
-            </button>
-            {filterOpen && (
-              <div className="toolbar__filter-popout">
-                <div className="toolbar__filter-header">
-                  <span>Missing Episodes</span>
-                  {hasActiveRange && (
+          {filterOpen && (
+            <div className="toolbar__filter-popout">
+              <div className="toolbar__filter-section">
+                <div className="toolbar__filter-section-label">Staleness</div>
+                <div className="toolbar__filter-chips">
+                  {STALENESS_OPTIONS.map((opt) => (
                     <button
-                      className="toolbar__filter-clear"
-                      onClick={() => { onMissingRangeChange(null); setFilterOpen(false); }}
+                      key={opt.value}
+                      className={`toolbar__chip${stalenessFilter === opt.value ? ' toolbar__chip--active' : ''}`}
+                      onClick={() => onFilterChange(opt.value)}
                     >
-                      Clear
+                      {opt.label}
                     </button>
-                  )}
-                </div>
-                <div className="toolbar__range-labels">
-                  <span>{rangeMin}</span>
-                  <span>{rangeMax}</span>
-                </div>
-                <div className="toolbar__range-track">
-                  <input
-                    type="range"
-                    min={0}
-                    max={maxMissing}
-                    value={rangeMin}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      onMissingRangeChange([Math.min(v, rangeMax), rangeMax]);
-                    }}
-                    className="toolbar__range-input toolbar__range-input--min"
-                  />
-                  <input
-                    type="range"
-                    min={0}
-                    max={maxMissing}
-                    value={rangeMax}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      onMissingRangeChange([rangeMin, Math.max(v, rangeMin)]);
-                    }}
-                    className="toolbar__range-input toolbar__range-input--max"
-                  />
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
-        )}
+              {onMissingRangeChange && maxMissing > 0 && (
+                <div className="toolbar__filter-section">
+                  <div className="toolbar__filter-section-header">
+                    <span className="toolbar__filter-section-label">Missing Episodes</span>
+                    {hasActiveRange && (
+                      <button
+                        className="toolbar__filter-clear"
+                        onClick={() => onMissingRangeChange(null)}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="toolbar__range-inputs">
+                    <label className="toolbar__range-field">
+                      <span>Min</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxMissing}
+                        value={rangeMin}
+                        onChange={(e) => {
+                          const v = Math.max(0, Math.min(Number(e.target.value) || 0, rangeMax));
+                          onMissingRangeChange([v, rangeMax]);
+                        }}
+                        className="toolbar__number-input"
+                      />
+                    </label>
+                    <span className="toolbar__range-dash">–</span>
+                    <label className="toolbar__range-field">
+                      <span>Max</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxMissing}
+                        value={rangeMax}
+                        onChange={(e) => {
+                          const v = Math.min(maxMissing, Math.max(Number(e.target.value) || 0, rangeMin));
+                          onMissingRangeChange([rangeMin, v]);
+                        }}
+                        className="toolbar__number-input"
+                      />
+                    </label>
+                  </div>
+                  <div className="toolbar__range-track">
+                    <input
+                      type="range"
+                      min={0}
+                      max={maxMissing}
+                      value={rangeMin}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        onMissingRangeChange([Math.min(v, rangeMax), rangeMax]);
+                      }}
+                      className="toolbar__range-input toolbar__range-input--min"
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={maxMissing}
+                      value={rangeMax}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        onMissingRangeChange([rangeMin, Math.max(v, rangeMin)]);
+                      }}
+                      className="toolbar__range-input toolbar__range-input--max"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <span className="toolbar__count">
           {filteredCount === totalCount ? totalCount : `${filteredCount} / ${totalCount}`}
         </span>
