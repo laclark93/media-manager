@@ -180,6 +180,8 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
               </div>
             )}
             <div className="timeline__row" onClick={() => setExpanded(isExp ? null : bucket.key)}>
+              <span className="timeline__month-label">{MONTH_NAMES[bucket.month]}</span>
+              <span className="timeline__bar-count">{bucket.count}</span>
               <div className="timeline__bar-track">
                 <div className="timeline__bar-stacked" style={{ width: `${Math.max(pct, 1)}%` }}>
                   {segments.map((seg, i) => (
@@ -195,8 +197,6 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
                   ))}
                 </div>
               </div>
-              <span className="timeline__month-label">{MONTH_NAMES[bucket.month]}</span>
-              <span className="timeline__bar-count">{bucket.count}</span>
             </div>
             {isExp && (
               <div className="timeline__detail">
@@ -445,16 +445,44 @@ function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
 }
 
 /* ────────────────────────────────────────────────────────── */
-/*  View F: Calendar                                          */
-/*  - Monthly calendar grid, navigate by month/year           */
+/*  View F: Calendar (12-month year view)                     */
 /* ────────────────────────────────────────────────────────── */
-const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_HEADERS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+interface CalendarCell { day: number; key: string; count: number }
+
+function buildMonthGrid(year: number, month: number, dateMap: Map<string, MissingTimelineEntry[]>): { weeks: CalendarCell[][]; total: number } {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const weeks: CalendarCell[][] = [];
+  let currentWeek: CalendarCell[] = [];
+  let total = 0;
+
+  for (let i = 0; i < firstDay; i++) currentWeek.push({ day: 0, key: '', count: 0 });
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const count = dateMap.get(key)?.length ?? 0;
+    total += count;
+    currentWeek.push({ day: d, key, count });
+    if (currentWeek.length === 7) { weeks.push(currentWeek); currentWeek = []; }
+  }
+
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) currentWeek.push({ day: 0, key: '', count: 0 });
+    weeks.push(currentWeek);
+  }
+
+  return { weeks, total };
+}
 
 function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
-  // Find the min/max dates to know the navigable range
-  const { minDate, maxDate, dateMap } = useMemo(() => {
+  const { minDate, maxDate, dateMap, globalMaxDay } = useMemo(() => {
     const map = new Map<string, MissingTimelineEntry[]>();
     let min = Infinity, max = -Infinity;
+    const dayCounts = new Map<string, number>();
     for (const ep of entries) {
       if (!ep.airDateUtc) continue;
       const d = new Date(ep.airDateUtc);
@@ -465,129 +493,72 @@ function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
       const arr = map.get(key);
       if (arr) arr.push(ep);
       else map.set(key, [ep]);
+      dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
     }
-    return {
-      minDate: new Date(min),
-      maxDate: new Date(max),
-      dateMap: map,
-    };
+    let gMax = 1;
+    for (const c of dayCounts.values()) { if (c > gMax) gMax = c; }
+    return { minDate: new Date(min), maxDate: new Date(max), dateMap: map, globalMaxDay: gMax };
   }, [entries]);
 
   const [year, setYear] = useState(() => maxDate.getFullYear());
-  const [month, setMonth] = useState(() => maxDate.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const minYear = minDate.getFullYear();
   const maxYear = maxDate.getFullYear();
 
-  // Build calendar grid for the current month
-  const { weeks, monthTotal } = useMemo(() => {
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const wks: { day: number; key: string; count: number }[][] = [];
-    let currentWeek: { day: number; key: string; count: number }[] = [];
-    let total = 0;
-
-    // Pad the first week
-    for (let i = 0; i < firstDay; i++) {
-      currentWeek.push({ day: 0, key: '', count: 0 });
+  const yearTotal = useMemo(() => {
+    let t = 0;
+    for (const [key, arr] of dateMap.entries()) {
+      if (key.startsWith(String(year) + '-')) t += arr.length;
     }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const count = dateMap.get(key)?.length ?? 0;
-      total += count;
-      currentWeek.push({ day: d, key, count });
-      if (currentWeek.length === 7) {
-        wks.push(currentWeek);
-        currentWeek = [];
-      }
-    }
-
-    // Pad the last week
-    if (currentWeek.length > 0) {
-      while (currentWeek.length < 7) {
-        currentWeek.push({ day: 0, key: '', count: 0 });
-      }
-      wks.push(currentWeek);
-    }
-
-    return { weeks: wks, monthTotal: total };
-  }, [year, month, dateMap]);
-
-  const prevMonth = () => {
-    if (month === 0) { setYear((y: number) => y - 1); setMonth(11); }
-    else setMonth((m: number) => m - 1);
-  };
-
-  const nextMonth = () => {
-    if (month === 11) { setYear((y: number) => y + 1); setMonth(0); }
-    else setMonth((m: number) => m + 1);
-  };
-
-  const canPrev = year > minYear || month > minDate.getMonth() || year > minYear;
-  const canNext = year < maxYear || month < maxDate.getMonth() || year < maxYear;
+    return t;
+  }, [year, dateMap]);
 
   const selectedEntries = selectedDay ? dateMap.get(selectedDay) ?? [] : [];
-
-  // Find max count for heat-map intensity
-  const maxDayCount = useMemo(() => {
-    let max = 0;
-    for (const wk of weeks) {
-      for (const d of wk) {
-        if (d.count > max) max = d.count;
-      }
-    }
-    return Math.max(max, 1);
-  }, [weeks]);
 
   return (
     <div className="calendar">
       <div className="calendar__nav">
-        <button className="calendar__nav-btn" onClick={prevMonth} disabled={!canPrev}>&lt;</button>
+        <button className="calendar__nav-btn" onClick={() => setYear((y: number) => y - 1)} disabled={year <= minYear}>&lt;</button>
         <div className="calendar__nav-center">
-          <select
-            className="calendar__select"
-            value={month}
-            onChange={e => setMonth(Number(e.target.value))}
-          >
-            {MONTH_NAMES.map((name, i) => (
-              <option key={i} value={i}>{name}</option>
-            ))}
-          </select>
-          <select
-            className="calendar__select"
-            value={year}
-            onChange={e => setYear(Number(e.target.value))}
-          >
+          <select className="calendar__select" value={year} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setYear(Number(e.target.value))}>
             {Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i).map(y => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
-          <span className="calendar__month-total">{monthTotal} missing</span>
+          <span className="calendar__month-total">{yearTotal} missing</span>
         </div>
-        <button className="calendar__nav-btn" onClick={nextMonth} disabled={!canNext}>&gt;</button>
+        <button className="calendar__nav-btn" onClick={() => setYear((y: number) => y + 1)} disabled={year >= maxYear}>&gt;</button>
       </div>
 
-      <div className="calendar__grid">
-        {DAY_HEADERS.map(d => (
-          <div key={d} className="calendar__day-header">{d}</div>
-        ))}
-        {weeks.flat().map((cell, i) => (
-          <div
-            key={i}
-            className={`calendar__cell${cell.day === 0 ? ' calendar__cell--empty' : ''}${cell.count > 0 ? ' calendar__cell--has-episodes' : ''}${cell.key === selectedDay ? ' calendar__cell--selected' : ''}`}
-            onClick={() => cell.day > 0 && cell.count > 0 && setSelectedDay(cell.key === selectedDay ? null : cell.key)}
-            style={cell.count > 0 ? { '--intensity': cell.count / maxDayCount } as React.CSSProperties : undefined}
-          >
-            {cell.day > 0 && (
-              <>
-                <span className="calendar__cell-day">{cell.day}</span>
-                {cell.count > 0 && <span className="calendar__cell-count">{cell.count}</span>}
-              </>
-            )}
-          </div>
-        ))}
+      <div className="calendar__year-grid">
+        {Array.from({ length: 12 }, (_, monthIdx) => {
+          const { weeks, total } = buildMonthGrid(year, monthIdx, dateMap);
+          return (
+            <div key={monthIdx} className="calendar__mini-month">
+              <div className="calendar__mini-header">
+                <span className="calendar__mini-month-name">{MONTH_NAMES_FULL[monthIdx]}</span>
+                {total > 0 && <span className="calendar__mini-month-count">{total}</span>}
+              </div>
+              <div className="calendar__mini-grid">
+                {DAY_HEADERS_SHORT.map((d, i) => (
+                  <div key={i} className="calendar__mini-day-header">{d}</div>
+                ))}
+                {weeks.flat().map((cell, i) => (
+                  <div
+                    key={i}
+                    className={`calendar__mini-cell${cell.day === 0 ? ' calendar__mini-cell--empty' : ''}${cell.count > 0 ? ' calendar__mini-cell--has' : ''}${cell.key === selectedDay ? ' calendar__mini-cell--selected' : ''}`}
+                    onClick={() => cell.day > 0 && cell.count > 0 && setSelectedDay(cell.key === selectedDay ? null : cell.key)}
+                    style={cell.count > 0 ? { '--intensity': cell.count / globalMaxDay } as React.CSSProperties : undefined}
+                    title={cell.count > 0 ? `${cell.count} missing` : undefined}
+                  >
+                    {cell.day > 0 ? cell.day : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {selectedDay && selectedEntries.length > 0 && (
