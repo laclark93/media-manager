@@ -151,6 +151,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         totalFiles: files.length,
         foundSubtitles: [...new Set(missingEngSubs.map(f => f.mediaInfo?.subtitles?.trim() || 'No subtitles'))].join(', '),
         affectedFileIds: missingEngSubs.map(f => f.id),
+        filePaths: missingEngSubs.map(f => f.path).filter(Boolean),
         slug: m.titleSlug,
         posterUrl: poster ? `/api/radarr/image${poster.url}` : undefined,
         remotePosterUrl: poster?.remoteUrl,
@@ -164,8 +165,17 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         missing.map(async (item) => {
           try {
             const results = await plexService.search(config.plexToken, item.title, 'movie');
-            if (results.length === 0) return item;
-            const match = results.find((r: any) => r.year === item.year) ?? results[0];
+
+            let match: { ratingKey: string; title: string; year: number } | undefined;
+            if (results.length === 0 && item.filePaths?.length > 0) {
+              console.log(`[TRACE] plex title search failed for "${item.title}", trying file-path fallback`);
+              const pathMatch = await plexService.findMovieByFilePath(config.plexToken, item.filePaths);
+              if (pathMatch) match = pathMatch;
+            } else if (results.length > 0) {
+              match = results.find((r: any) => r.year === item.year) ?? results[0];
+            }
+
+            if (!match) return item;
             const streams = await plexService.getItemStreams(config.plexToken, match.ratingKey, `"${item.title}"`);
             const hasEngSub = streams.some(s => {
               const code = s.languageCode?.toLowerCase()?.trim();

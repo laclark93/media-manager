@@ -114,6 +114,109 @@ export async function search(
   return [];
 }
 
+/** Find a Plex show by matching Sonarr file paths against Plex library locations */
+export async function findShowByFilePath(
+  token: string,
+  filePaths: string[],
+): Promise<{ ratingKey: string; title: string; year: number } | null> {
+  const server = await discoverServer(token);
+
+  // Get all library sections
+  const sectionsResp = await client(server.uri, token).get('/library/sections');
+  const sections = sectionsResp.data.MediaContainer?.Directory || [];
+  const tvSections = sections.filter((s: any) => s.type === 'show');
+
+  if (tvSections.length === 0) return null;
+
+  // Extract series folder from file paths (e.g. /tv/Full Moon wo Sagashite/Season 01/ep.mkv → /tv/Full Moon wo Sagashite)
+  // Use the parent-of-parent directory (file → season folder → series folder)
+  const seriesFolders = new Set<string>();
+  for (const fp of filePaths) {
+    const normalized = fp.replace(/\\/g, '/');
+    const parts = normalized.split('/');
+    if (parts.length >= 3) {
+      // Remove filename and season folder to get series folder name
+      const seriesFolder = parts[parts.length - 3];
+      seriesFolders.add(seriesFolder.toLowerCase());
+    }
+  }
+
+  if (seriesFolders.size === 0) return null;
+  console.log(`[TRACE] plex findShowByFilePath: looking for folders [${[...seriesFolders].join(', ')}]`);
+
+  // Browse each TV section and match by Location
+  for (const section of tvSections) {
+    const allResp = await client(server.uri, token).get(`/library/sections/${section.key}/all`, {
+      params: { type: 2 },
+    });
+    const shows = allResp.data.MediaContainer?.Metadata || [];
+
+    for (const show of shows) {
+      // Plex shows have Location array with directory paths
+      const locations: string[] = (show.Location || []).map((l: any) => l.path?.replace(/\\/g, '/') || '');
+      for (const loc of locations) {
+        const locFolder = loc.split('/').pop()?.toLowerCase();
+        if (locFolder && seriesFolders.has(locFolder)) {
+          console.log(`[TRACE] plex findShowByFilePath: matched "${show.title}" via folder "${locFolder}"`);
+          return { ratingKey: show.ratingKey, title: show.title, year: show.year ?? 0 };
+        }
+      }
+    }
+  }
+
+  console.log(`[TRACE] plex findShowByFilePath: no match found`);
+  return null;
+}
+
+/** Find a Plex movie by matching Radarr file paths against Plex library locations */
+export async function findMovieByFilePath(
+  token: string,
+  filePaths: string[],
+): Promise<{ ratingKey: string; title: string; year: number } | null> {
+  const server = await discoverServer(token);
+
+  const sectionsResp = await client(server.uri, token).get('/library/sections');
+  const sections = sectionsResp.data.MediaContainer?.Directory || [];
+  const movieSections = sections.filter((s: any) => s.type === 'movie');
+
+  if (movieSections.length === 0) return null;
+
+  // Extract movie folder from file paths (e.g. /movies/Full Moon (2020)/movie.mkv → Full Moon (2020))
+  const movieFolders = new Set<string>();
+  for (const fp of filePaths) {
+    const normalized = fp.replace(/\\/g, '/');
+    const parts = normalized.split('/');
+    if (parts.length >= 2) {
+      const movieFolder = parts[parts.length - 2];
+      movieFolders.add(movieFolder.toLowerCase());
+    }
+  }
+
+  if (movieFolders.size === 0) return null;
+  console.log(`[TRACE] plex findMovieByFilePath: looking for folders [${[...movieFolders].join(', ')}]`);
+
+  for (const section of movieSections) {
+    const allResp = await client(server.uri, token).get(`/library/sections/${section.key}/all`, {
+      params: { type: 1 },
+    });
+    const movies = allResp.data.MediaContainer?.Metadata || [];
+
+    for (const movie of movies) {
+      const locations: string[] = (movie.Location || []).map((l: any) => l.path?.replace(/\\/g, '/') || '');
+      for (const loc of locations) {
+        const locFolder = loc.split('/').pop()?.toLowerCase();
+        if (locFolder && movieFolders.has(locFolder)) {
+          console.log(`[TRACE] plex findMovieByFilePath: matched "${movie.title}" via folder "${locFolder}"`);
+          return { ratingKey: movie.ratingKey, title: movie.title, year: movie.year ?? 0 };
+        }
+      }
+    }
+  }
+
+  console.log(`[TRACE] plex findMovieByFilePath: no match found`);
+  return null;
+}
+
 /** Get all episodes for a show by its ratingKey */
 export async function getShowEpisodes(
   token: string,

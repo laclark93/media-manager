@@ -219,6 +219,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         totalFiles: files.length,
         foundSubtitles: [...new Set(missingEngSubs.map(f => f.mediaInfo?.subtitles?.trim() || 'No subtitles'))].join(', '),
         affectedEpisodes,
+        filePaths: missingEngSubs.map(f => f.path).filter(Boolean),
         slug: s.titleSlug,
         posterUrl: poster ? `/api/sonarr/image${poster.url}` : undefined,
         remotePosterUrl: poster?.remoteUrl,
@@ -231,10 +232,22 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       const plexResults = await Promise.allSettled(
         missing.map(async (item) => {
           try {
-            const plexMatches = await plexService.search(config.plexToken, item.title, 'show');
+            let plexMatches = await plexService.search(config.plexToken, item.title, 'show');
             console.log(`[TRACE] plex search "${item.title}": ${plexMatches.length} result(s)`);
-            if (plexMatches.length === 0) return item;
-            const match = plexMatches.find((r: any) => r.year === item.year) ?? plexMatches[0];
+
+            // Fallback: if title search fails, match by file path (handles title mismatches like "Full Moon wo Sagashite" vs "Full Moon")
+            let match: { ratingKey: string; title: string; year: number } | undefined;
+            if (plexMatches.length === 0 && item.filePaths?.length > 0) {
+              console.log(`[TRACE] plex title search failed for "${item.title}", trying file-path fallback`);
+              const pathMatch = await plexService.findShowByFilePath(config.plexToken, item.filePaths);
+              if (pathMatch) {
+                match = pathMatch;
+              }
+            } else if (plexMatches.length > 0) {
+              match = plexMatches.find((r: any) => r.year === item.year) ?? plexMatches[0];
+            }
+
+            if (!match) return item;
             console.log(`[TRACE] plex match: "${match.title}" (${match.year}) ratingKey=${match.ratingKey}`);
 
             const plexEpisodes = await plexService.getShowEpisodes(config.plexToken, match.ratingKey);

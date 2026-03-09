@@ -178,6 +178,7 @@ export interface SonarrEpisodeFile {
   id: number;
   seriesId: number;
   seasonNumber: number;
+  path?: string;
   mediaInfo?: {
     subtitles?: string;
     audioLanguages?: string;
@@ -187,6 +188,7 @@ export interface SonarrEpisodeFile {
 export interface RadarrMovieFile {
   id: number;
   movieId: number;
+  path?: string;
   mediaInfo?: {
     subtitles?: string;
     audioLanguages?: string;
