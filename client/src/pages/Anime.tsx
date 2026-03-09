@@ -274,10 +274,10 @@ export function Anime() {
   // Build set of series/movie IDs that have subtitle issues
   const subItemKeys = new Set(subItems.map(i => `${i.service}-${i.id}`));
 
-  // "anime-not-tagged": only show if has missing episodes/files
-  const notTagged = items.filter(i => i.mismatchType === 'anime-not-tagged' && i.hasMissing);
-  // "tagged-not-anime": show if has missing episodes/files OR has subtitle issues
-  const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime' && (i.hasMissing || subItemKeys.has(`${i.service}-${i.id}`)));
+  // "anime-not-tagged": show if has missing episodes/files OR has subtitle issues
+  const notTagged = items.filter(i => i.mismatchType === 'anime-not-tagged' && (i.hasMissing || subItemKeys.has(`${i.service}-${i.id}`)));
+  // "tagged-not-anime": only show if has missing episodes/files
+  const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime' && i.hasMissing);
   const visibleWronglyTagged = allWronglyTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}`));
   const ignoredWronglyTagged = allWronglyTagged.filter(i => ignoredKeys.has(`${i.service}-${i.id}`));
 
