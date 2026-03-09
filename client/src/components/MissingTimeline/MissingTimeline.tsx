@@ -401,8 +401,11 @@ interface YearShowData {
   color: string;
 }
 
+const BY_YEAR_VISIBLE_BARS = 6;
+
 function ByYearCards({ entries }: { entries: MissingTimelineEntry[] }) {
-  // Build a stable color map across all shows
+  const [expanded, setExpanded] = useState<number | null>(null);
+
   const showColorMap = useMemo(() => {
     const countByShow = new Map<string, number>();
     for (const ep of entries) {
@@ -434,41 +437,53 @@ function ByYearCards({ entries }: { entries: MissingTimelineEntry[] }) {
     return result;
   }, [entries, showColorMap]);
 
-  const globalMaxShow = useMemo(() => {
-    let max = 1;
-    for (const yd of yearData) {
-      for (const s of yd.shows) { if (s.count > max) max = s.count; }
-    }
-    return max;
-  }, [yearData]);
-
   return (
     <div className="by-year-cards">
-      {yearData.map(yd => (
-        <div key={yd.year} className="by-year-card">
-          <div className="by-year-card__header">
-            <span className="by-year-card__year">{yd.year}</span>
-            <span className="by-year-card__total">{yd.total} missing</span>
-          </div>
-          <div className="by-year-card__chart">
-            {yd.shows.map(show => (
-              <div key={show.title} className="by-year-card__bar-col" title={`${show.title}: ${show.count}`}>
-                <div className="by-year-card__bar-wrapper">
-                  <div
-                    className="by-year-card__bar"
-                    style={{
-                      height: `${(show.count / globalMaxShow) * 100}%`,
-                      background: show.color,
-                    }}
-                  />
+      {yearData.map(yd => {
+        const isExp = expanded === yd.year;
+        const visibleShows = yd.shows.slice(0, BY_YEAR_VISIBLE_BARS);
+        const maxInCard = Math.max(...yd.shows.map(s => s.count), 1);
+        const hasMore = yd.shows.length > BY_YEAR_VISIBLE_BARS;
+        return (
+          <div key={yd.year} className="by-year-card" onClick={() => setExpanded(isExp ? null : yd.year)}>
+            <div className="by-year-card__header">
+              <span className="by-year-card__year">{yd.year}</span>
+              <span className="by-year-card__total">{yd.total} missing</span>
+              <span className="by-year-card__shows-count">{yd.shows.length} shows</span>
+            </div>
+            <div className="by-year-card__chart">
+              {visibleShows.map(show => (
+                <div key={show.title} className="by-year-card__bar-col" title={`${show.title}: ${show.count}`}>
+                  <div className="by-year-card__bar-wrapper">
+                    <div
+                      className="by-year-card__bar"
+                      style={{
+                        height: `${(show.count / maxInCard) * 100}%`,
+                        background: show.color,
+                      }}
+                    />
+                  </div>
+                  <span className="by-year-card__bar-count">{show.count}</span>
                 </div>
-                <span className="by-year-card__bar-count">{show.count}</span>
-                <span className="by-year-card__bar-label" title={show.title}>{show.title}</span>
+              ))}
+            </div>
+            {hasMore && !isExp && (
+              <div className="by-year-card__more">+{yd.shows.length - BY_YEAR_VISIBLE_BARS} more</div>
+            )}
+            {isExp && (
+              <div className="by-year-card__detail">
+                {yd.shows.map(show => (
+                  <div key={show.title} className="timeline__detail-show">
+                    <span className="timeline__detail-color" style={{ background: show.color }} />
+                    <span className="timeline__detail-show-count">{show.count}</span>
+                    <span className="timeline__detail-show-title">{show.title}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
