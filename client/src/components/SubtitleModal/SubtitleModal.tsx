@@ -245,7 +245,21 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
   }, [dismissedFileIds.size, episodes.length, movieFileIds.length, onClose, onAllMarkedFailed]);
 
   const handleFileDone = (fileId: number) => {
-    setDismissedFileIds(prev => new Set([...prev, fileId]));
+    setDismissedFileIds(prev => {
+      const next = new Set([...prev, fileId]);
+      // Check if all items are now dismissed
+      const allEpIds = (item.affectedEpisodes ?? []).map(ep => ep.fileId);
+      const allMovieIds = item.affectedFileIds ?? [];
+      const allDone = [...allEpIds, ...allMovieIds].every(id => next.has(id));
+      if (allDone && next.size > 0) {
+        // Schedule close — use setTimeout to allow state to settle
+        setTimeout(() => {
+          onAllMarkedFailed?.();
+          onClose();
+        }, 1000);
+      }
+      return next;
+    });
   };
 
   const handleMarkAll = async () => {
