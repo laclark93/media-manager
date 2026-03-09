@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { MissingTimelineEntry } from '../../types/sonarr';
 import './MissingTimeline.css';
 
-type TimelineView = 'histogram' | 'grid' | 'yearly' | 'shows' | 'calendar';
+type TimelineView = 'histogram' | 'grid' | 'yearly' | 'byYear' | 'shows' | 'calendar';
 
 const VIEW_LABELS: { key: TimelineView; label: string }[] = [
   { key: 'histogram', label: 'Monthly' },
   { key: 'grid', label: 'Season Grid' },
   { key: 'yearly', label: 'Yearly' },
+  { key: 'byYear', label: 'By Year' },
   { key: 'shows', label: 'By Show' },
   { key: 'calendar', label: 'Calendar' },
 ];
@@ -392,6 +393,87 @@ function YearlyAreaChart({ entries }: { entries: MissingTimelineEntry[] }) {
 }
 
 /* ────────────────────────────────────────────────────────── */
+/*  View D: By Year Cards with per-show bar graphs           */
+/* ────────────────────────────────────────────────────────── */
+interface YearShowData {
+  title: string;
+  count: number;
+  color: string;
+}
+
+function ByYearCards({ entries }: { entries: MissingTimelineEntry[] }) {
+  // Build a stable color map across all shows
+  const showColorMap = useMemo(() => {
+    const countByShow = new Map<string, number>();
+    for (const ep of entries) {
+      countByShow.set(ep.seriesTitle, (countByShow.get(ep.seriesTitle) ?? 0) + 1);
+    }
+    const sorted = Array.from(countByShow.entries()).sort((a, b) => b[1] - a[1]);
+    const map = new Map<string, string>();
+    sorted.forEach(([title], i) => map.set(title, getShowColor(i)));
+    return map;
+  }, [entries]);
+
+  const yearData = useMemo(() => {
+    const byYear = new Map<number, Map<string, number>>();
+    for (const ep of entries) {
+      if (!ep.airDateUtc) continue;
+      const year = new Date(ep.airDateUtc).getFullYear();
+      let shows = byYear.get(year);
+      if (!shows) { shows = new Map(); byYear.set(year, shows); }
+      shows.set(ep.seriesTitle, (shows.get(ep.seriesTitle) ?? 0) + 1);
+    }
+    const result: { year: number; total: number; shows: YearShowData[] }[] = [];
+    for (const [year, shows] of byYear.entries()) {
+      const showArr: YearShowData[] = Array.from(shows.entries())
+        .map(([title, count]) => ({ title, count, color: showColorMap.get(title) ?? getShowColor(0) }))
+        .sort((a, b) => b.count - a.count);
+      result.push({ year, total: showArr.reduce((s, x) => s + x.count, 0), shows: showArr });
+    }
+    result.sort((a, b) => b.year - a.year);
+    return result;
+  }, [entries, showColorMap]);
+
+  const globalMaxShow = useMemo(() => {
+    let max = 1;
+    for (const yd of yearData) {
+      for (const s of yd.shows) { if (s.count > max) max = s.count; }
+    }
+    return max;
+  }, [yearData]);
+
+  return (
+    <div className="by-year-cards">
+      {yearData.map(yd => (
+        <div key={yd.year} className="by-year-card">
+          <div className="by-year-card__header">
+            <span className="by-year-card__year">{yd.year}</span>
+            <span className="by-year-card__total">{yd.total} missing</span>
+          </div>
+          <div className="by-year-card__chart">
+            {yd.shows.map(show => (
+              <div key={show.title} className="by-year-card__bar-col" title={`${show.title}: ${show.count}`}>
+                <div className="by-year-card__bar-wrapper">
+                  <div
+                    className="by-year-card__bar"
+                    style={{
+                      height: `${(show.count / globalMaxShow) * 100}%`,
+                      background: show.color,
+                    }}
+                  />
+                </div>
+                <span className="by-year-card__bar-count">{show.count}</span>
+                <span className="by-year-card__bar-label" title={show.title}>{show.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────── */
 /*  View E: Show-grouped Timeline                            */
 /* ────────────────────────────────────────────────────────── */
 interface ShowRange {
@@ -584,6 +666,17 @@ function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
         <button className="calendar__nav-btn" onClick={() => setYear((y: number) => y + 1)} disabled={year >= maxYear}>&gt;</button>
       </div>
 
+      <div className="calendar__heatmap-legend">
+        <span className="calendar__legend-label">Less</span>
+        <div className="calendar__legend-scale">
+          {[0, 0.2, 0.4, 0.6, 0.8, 1].map(v => (
+            <div key={v} className="calendar__legend-swatch" style={{ background: `rgba(52, 152, 219, ${0.15 + 0.6 * v})` }} />
+          ))}
+        </div>
+        <span className="calendar__legend-label">More</span>
+        <span className="calendar__legend-max">max: {globalMaxDay}/day</span>
+      </div>
+
       <div className="calendar__year-grid">
         {Array.from({ length: 12 }, (_, monthIdx) => {
           const now = new Date();
@@ -688,6 +781,7 @@ export function MissingTimeline({ getMissingTimeline }: MissingTimelineProps) {
       {view === 'histogram' && <MonthlyHistogram entries={entries} />}
       {view === 'grid' && <SeasonGrid entries={entries} />}
       {view === 'yearly' && <YearlyAreaChart entries={entries} />}
+      {view === 'byYear' && <ByYearCards entries={entries} />}
       {view === 'shows' && <ShowTimeline entries={entries} />}
       {view === 'calendar' && <CalendarView entries={entries} />}
     </div>
