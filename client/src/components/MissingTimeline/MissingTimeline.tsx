@@ -563,6 +563,9 @@ function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
 
       <div className="calendar__year-grid">
         {Array.from({ length: 12 }, (_, monthIdx) => {
+          const now = new Date();
+          // Skip months past the current date
+          if (year > now.getFullYear() || (year === now.getFullYear() && monthIdx > now.getMonth())) return null;
           const { weeks, total } = buildMonthGrid(year, monthIdx, dateMap);
           return (
             <div key={monthIdx} className="calendar__mini-month">
