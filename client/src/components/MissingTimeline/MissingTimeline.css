@@ -292,7 +292,65 @@
   flex-shrink: 0;
 }
 
-/* (Cumulative and Year Card views removed — replaced by Yearly Bar Graph and By Year Show Bars) */
+/* ── Yearly Area/Line Chart (View C) ──────────────────────── */
+.yearly-chart {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+}
+
+.yearly-chart__svg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 800 / 300;
+}
+
+.yearly-chart__grid {
+  stroke: var(--border);
+  stroke-width: 0.5;
+}
+
+.yearly-chart__area {
+  fill: rgba(52, 152, 219, 0.15);
+}
+
+.yearly-chart__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.yearly-chart__dot {
+  fill: var(--accent);
+  cursor: pointer;
+  transition: r 0.15s;
+}
+
+.yearly-chart__dot:hover {
+  r: 6;
+}
+
+.yearly-chart__axis-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.yearly-chart__tooltip {
+  position: absolute;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+  transform: translate(-50%, -130%);
+}
 
 /* ── Show Timeline (View E) ─────────────────────────────── */
 .show-timeline {

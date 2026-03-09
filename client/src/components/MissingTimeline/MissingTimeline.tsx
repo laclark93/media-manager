@@ -2,13 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { MissingTimelineEntry } from '../../types/sonarr';
 import './MissingTimeline.css';
 
-type TimelineView = 'histogram' | 'grid' | 'yearly' | 'years' | 'shows' | 'calendar';
+type TimelineView = 'histogram' | 'grid' | 'yearly' | 'shows' | 'calendar';
 
 const VIEW_LABELS: { key: TimelineView; label: string }[] = [
   { key: 'histogram', label: 'Monthly' },
   { key: 'grid', label: 'Season Grid' },
   { key: 'yearly', label: 'Yearly' },
-  { key: 'years', label: 'By Year' },
   { key: 'shows', label: 'By Show' },
   { key: 'calendar', label: 'Calendar' },
 ];
@@ -288,10 +287,16 @@ function SeasonGrid({ entries }: { entries: MissingTimelineEntry[] }) {
 }
 
 /* ────────────────────────────────────────────────────────── */
-/*  View C: Yearly Bar Graph (replaces Cumulative)           */
-/*  - One bar per year, not cumulative                       */
+/*  View C: Yearly Line/Area Chart (SVG)                     */
+/*  - X-axis: year, Y-axis: total missing for that year      */
 /* ────────────────────────────────────────────────────────── */
-function YearlyBarGraph({ entries }: { entries: MissingTimelineEntry[] }) {
+const CHART_W = 800;
+const CHART_H = 300;
+const CHART_PAD = { top: 20, right: 30, bottom: 40, left: 50 };
+
+function YearlyAreaChart({ entries }: { entries: MissingTimelineEntry[] }) {
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; year: number; count: number } | null>(null);
+
   const years = useMemo(() => {
     const map = new Map<number, number>();
     for (const ep of entries) {
@@ -299,64 +304,79 @@ function YearlyBarGraph({ entries }: { entries: MissingTimelineEntry[] }) {
       const year = new Date(ep.airDateUtc).getFullYear();
       map.set(year, (map.get(year) ?? 0) + 1);
     }
-    return Array.from(map.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([year, count]) => ({ year, count }));
+    const sorted = Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+    // Fill gaps so the line is continuous
+    if (sorted.length < 2) return sorted.map(([year, count]) => ({ year, count }));
+    const result: { year: number; count: number }[] = [];
+    for (let y = sorted[0][0]; y <= sorted[sorted.length - 1][0]; y++) {
+      result.push({ year: y, count: map.get(y) ?? 0 });
+    }
+    return result;
   }, [entries]);
+
+  if (years.length === 0) return null;
 
   const maxCount = Math.max(...years.map(y => y.count), 1);
+  const plotW = CHART_W - CHART_PAD.left - CHART_PAD.right;
+  const plotH = CHART_H - CHART_PAD.top - CHART_PAD.bottom;
+
+  const xScale = (i: number) => CHART_PAD.left + (years.length > 1 ? (i / (years.length - 1)) * plotW : plotW / 2);
+  const yScale = (v: number) => CHART_PAD.top + plotH - (v / maxCount) * plotH;
+
+  // Build SVG path for line and area
+  const linePoints = years.map((y, i) => `${xScale(i)},${yScale(y.count)}`).join(' ');
+  const linePath = `M ${linePoints.replace(/ /g, ' L ')}`;
+  const areaPath = `M ${xScale(0)},${yScale(0)} L ${linePoints.replace(/ /g, ' L ')} L ${xScale(years.length - 1)},${yScale(0)} Z`;
+
+  // Y-axis ticks (roughly 5)
+  const yTicks: number[] = [];
+  const step = Math.ceil(maxCount / 5);
+  for (let v = 0; v <= maxCount; v += step) yTicks.push(v);
+  if (yTicks[yTicks.length - 1] < maxCount) yTicks.push(maxCount);
 
   return (
-    <div className="timeline__chart">
-      {years.map(y => {
-        const pct = (y.count / maxCount) * 100;
-        return (
-          <div key={y.year} className="timeline__row" style={{ cursor: 'default' }}>
-            <div className="timeline__bar-track">
-              <div className="timeline__bar" style={{ width: `${Math.max(pct, 1)}%` }} />
-            </div>
-            <span className="timeline__month-label">{y.year}</span>
-            <span className="timeline__bar-count">{y.count}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ────────────────────────────────────────────────────────── */
-/*  View D: By Year — Bar graph per show, ordered by count   */
-/* ────────────────────────────────────────────────────────── */
-function ByYearShowBars({ entries }: { entries: MissingTimelineEntry[] }) {
-  const shows = useMemo(() => {
-    const map = new Map<number, { title: string; count: number }>();
-    for (const ep of entries) {
-      let s = map.get(ep.seriesId);
-      if (!s) {
-        s = { title: ep.seriesTitle, count: 0 };
-        map.set(ep.seriesId, s);
-      }
-      s.count++;
-    }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [entries]);
-
-  const maxCount = Math.max(shows[0]?.count ?? 1, 1);
-
-  return (
-    <div className="timeline__chart">
-      {shows.map(show => {
-        const pct = (show.count / maxCount) * 100;
-        return (
-          <div key={show.title} className="timeline__row" style={{ cursor: 'default' }}>
-            <div className="timeline__bar-track">
-              <div className="timeline__bar" style={{ width: `${Math.max(pct, 1)}%` }} />
-            </div>
-            <span className="timeline__show-bar-label" title={show.title}>{show.title}</span>
-            <span className="timeline__bar-count">{show.count}</span>
-          </div>
-        );
-      })}
+    <div className="yearly-chart" style={{ position: 'relative' }}>
+      <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="yearly-chart__svg">
+        {/* Grid lines */}
+        {yTicks.map(v => (
+          <line key={v} x1={CHART_PAD.left} y1={yScale(v)} x2={CHART_W - CHART_PAD.right} y2={yScale(v)} className="yearly-chart__grid" />
+        ))}
+        {/* Area */}
+        <path d={areaPath} className="yearly-chart__area" />
+        {/* Line */}
+        <path d={linePath} className="yearly-chart__line" />
+        {/* Data points */}
+        {years.map((y, i) => (
+          <circle
+            key={y.year}
+            cx={xScale(i)}
+            cy={yScale(y.count)}
+            r={4}
+            className="yearly-chart__dot"
+            onMouseEnter={() => setTooltip({ x: xScale(i), y: yScale(y.count), year: y.year, count: y.count })}
+            onMouseLeave={() => setTooltip(null)}
+          />
+        ))}
+        {/* X-axis labels */}
+        {years.map((y, i) => (
+          // Show every year if <=15, otherwise every other
+          (years.length <= 15 || i % 2 === 0 || i === years.length - 1) ? (
+            <text key={y.year} x={xScale(i)} y={CHART_H - 8} textAnchor="middle" className="yearly-chart__axis-label">{y.year}</text>
+          ) : null
+        ))}
+        {/* Y-axis labels */}
+        {yTicks.map(v => (
+          <text key={v} x={CHART_PAD.left - 8} y={yScale(v) + 4} textAnchor="end" className="yearly-chart__axis-label">{v}</text>
+        ))}
+      </svg>
+      {tooltip && (
+        <div
+          className="yearly-chart__tooltip"
+          style={{ left: `${(tooltip.x / CHART_W) * 100}%`, top: `${(tooltip.y / CHART_H) * 100}%` }}
+        >
+          <strong>{tooltip.year}</strong>: {tooltip.count} missing
+        </div>
+      )}
     </div>
   );
 }
@@ -631,8 +651,7 @@ export function MissingTimeline({ getMissingTimeline }: MissingTimelineProps) {
 
       {view === 'histogram' && <MonthlyHistogram entries={entries} />}
       {view === 'grid' && <SeasonGrid entries={entries} />}
-      {view === 'yearly' && <YearlyBarGraph entries={entries} />}
-      {view === 'years' && <ByYearShowBars entries={entries} />}
+      {view === 'yearly' && <YearlyAreaChart entries={entries} />}
       {view === 'shows' && <ShowTimeline entries={entries} />}
       {view === 'calendar' && <CalendarView entries={entries} />}
     </div>
