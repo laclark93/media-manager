@@ -40,7 +40,7 @@ export function Movies() {
       posterUrl: getRadarrPosterUrl(m),
       remotePosterUrl: getRadarrRemotePoster(m),
       dateAdded: m.added,
-      lastAired: m.physicalRelease || m.digitalRelease,
+      lastAired: m.physicalRelease || m.digitalRelease || m.inCinemas || `${m.year}-01-01`,
     })),
     [movies]
   );

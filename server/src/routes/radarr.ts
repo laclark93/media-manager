@@ -36,7 +36,7 @@ router.get('/movies', async (_req: Request, res: Response) => {
       return;
     }
     const allMovies = await radarrService.getMovies(config.radarrUrl, config.radarrApiKey);
-    const missingMovies = allMovies.filter((m) => m.monitored && !m.hasFile);
+    const missingMovies = allMovies.filter((m) => m.monitored && !m.hasFile && m.isAvailable);
     console.log(`[INFO] Radarr movies: ${missingMovies.length} missing (of ${allMovies.length} total)`);
     res.json(missingMovies);
   } catch (err) {
