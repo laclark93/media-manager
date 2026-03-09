@@ -1,21 +1,45 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { MissingTimelineEntry } from '../../types/sonarr';
 import './MissingTimeline.css';
 
-type TimelineView = 'histogram' | 'grid' | 'cumulative' | 'years' | 'shows';
+type TimelineView = 'histogram' | 'grid' | 'yearly' | 'years' | 'shows' | 'calendar';
 
 const VIEW_LABELS: { key: TimelineView; label: string }[] = [
   { key: 'histogram', label: 'Monthly' },
   { key: 'grid', label: 'Season Grid' },
-  { key: 'cumulative', label: 'Cumulative' },
+  { key: 'yearly', label: 'Yearly' },
   { key: 'years', label: 'By Year' },
   { key: 'shows', label: 'By Show' },
+  { key: 'calendar', label: 'Calendar' },
 ];
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/** Returns true if the date is a Unix epoch placeholder (12/31/1969 or 1/1/1970) */
+function isEpochDate(dateStr: string): boolean {
+  if (!dateStr) return true;
+  const t = new Date(dateStr).getTime();
+  // Within 48 hours of Unix epoch = placeholder
+  return Math.abs(t) < 48 * 60 * 60 * 1000;
+}
+
+// Generate distinct colors for show segments in stacked bars
+const SHOW_COLORS = [
+  '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
+  '#1abc9c', '#e67e22', '#34495e', '#d35400', '#27ae60',
+  '#8e44ad', '#c0392b', '#16a085', '#f1c40f', '#2980b9',
+  '#7f8c8d', '#e84393', '#00cec9', '#fdcb6e', '#6c5ce7',
+];
+
 interface MissingTimelineProps {
   getMissingTimeline: () => Promise<MissingTimelineEntry[]>;
+}
+
+/* ────────────────────────────────────────────────────────── */
+/*  Filter out epoch dates                                    */
+/* ────────────────────────────────────────────────────────── */
+function filterEpochDates(entries: MissingTimelineEntry[]): MissingTimelineEntry[] {
+  return entries.filter(e => !isEpochDate(e.airDateUtc));
 }
 
 /* ────────────────────────────────────────────────────────── */
@@ -62,10 +86,13 @@ function SummaryStats({ entries }: { entries: MissingTimelineEntry[] }) {
 
 /* ────────────────────────────────────────────────────────── */
 /*  View A: Monthly Histogram                                */
+/*  - Bar left of month label, year total next to year       */
+/*  - Stacked bar segmented per show                         */
+/*  - Asc/desc toggle                                        */
+/*  - Detail: count next to show name, ordered by count      */
 /* ────────────────────────────────────────────────────────── */
 interface MonthBucket {
   key: string;
-  label: string;
   year: number;
   month: number;
   count: number;
@@ -74,9 +101,23 @@ interface MonthBucket {
 
 function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [ascending, setAscending] = useState(true);
 
-  const buckets = useMemo(() => {
+  // Build a stable color map for show titles
+  const showColorMap = useMemo(() => {
+    const countByShow = new Map<string, number>();
+    for (const ep of entries) {
+      countByShow.set(ep.seriesTitle, (countByShow.get(ep.seriesTitle) ?? 0) + 1);
+    }
+    const sorted = Array.from(countByShow.entries()).sort((a, b) => b[1] - a[1]);
+    const map = new Map<string, string>();
+    sorted.forEach(([title], i) => map.set(title, SHOW_COLORS[i % SHOW_COLORS.length]));
+    return map;
+  }, [entries]);
+
+  const { buckets, yearTotals } = useMemo(() => {
     const map = new Map<string, MonthBucket>();
+    const yTotals = new Map<number, number>();
     for (const ep of entries) {
       if (!ep.airDateUtc) continue;
       const d = new Date(ep.airDateUtc);
@@ -85,20 +126,33 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
       let b = map.get(key);
       if (!b) {
-        b = { key, label: `${MONTH_NAMES[month]} ${year}`, year, month, count: 0, shows: new Map() };
+        b = { key, year, month, count: 0, shows: new Map() };
         map.set(key, b);
       }
       b.count++;
       b.shows.set(ep.seriesTitle, (b.shows.get(ep.seriesTitle) ?? 0) + 1);
+      yTotals.set(year, (yTotals.get(year) ?? 0) + 1);
     }
-    return Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
-  }, [entries]);
+    const arr = Array.from(map.values());
+    arr.sort((a, b) => ascending ? a.key.localeCompare(b.key) : b.key.localeCompare(a.key));
+    return { buckets: arr, yearTotals: yTotals };
+  }, [entries, ascending]);
 
   const maxCount = useMemo(() => Math.max(...buckets.map(b => b.count), 1), [buckets]);
 
   let lastYear = 0;
   return (
     <div className="timeline__chart">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        <button
+          className="timeline-views__btn timeline-views__btn--active"
+          style={{ padding: '4px 10px', fontSize: '0.72rem', borderRadius: 4 }}
+          onClick={() => setAscending(v => !v)}
+          title={ascending ? 'Oldest first' : 'Newest first'}
+        >
+          {ascending ? '↑ Oldest first' : '↓ Newest first'}
+        </button>
+      </div>
       {buckets.map(bucket => {
         const showYear = bucket.year !== lastYear;
         lastYear = bucket.year;
@@ -107,22 +161,53 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
         const showsByCount = isExp
           ? Array.from(bucket.shows.entries()).sort((a, b) => b[1] - a[1])
           : [];
+
+        // Build stacked bar segments
+        const showsSorted = Array.from(bucket.shows.entries()).sort((a, b) => b[1] - a[1]);
+        const segments = showsSorted.map(([title, count]) => ({
+          title,
+          count,
+          pct: (count / bucket.count) * pct,
+          color: showColorMap.get(title) ?? SHOW_COLORS[0],
+        }));
+
         return (
           <div key={bucket.key}>
-            {showYear && <div className="timeline__year-sep">{bucket.year}</div>}
-            <div className="timeline__row" onClick={() => setExpanded(isExp ? null : bucket.key)}>
-              <span className="timeline__month-label">{MONTH_NAMES[bucket.month]}</span>
-              <div className="timeline__bar-track">
-                <div className="timeline__bar" style={{ width: `${Math.max(pct, 1)}%` }} />
+            {showYear && (
+              <div className="timeline__year-sep">
+                {bucket.year}
+                <span className="timeline__year-total">{yearTotals.get(bucket.year) ?? 0}</span>
               </div>
+            )}
+            <div className="timeline__row" onClick={() => setExpanded(isExp ? null : bucket.key)}>
+              <div className="timeline__bar-track">
+                <div className="timeline__bar-stacked" style={{ width: `${Math.max(pct, 1)}%` }}>
+                  {segments.map((seg, i) => (
+                    <div
+                      key={i}
+                      className="timeline__bar-segment"
+                      style={{
+                        width: `${(seg.count / bucket.count) * 100}%`,
+                        background: seg.color,
+                      }}
+                      title={`${seg.title}: ${seg.count}`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <span className="timeline__month-label">{MONTH_NAMES[bucket.month]}</span>
               <span className="timeline__bar-count">{bucket.count}</span>
             </div>
             {isExp && (
               <div className="timeline__detail">
                 {showsByCount.map(([title, count]) => (
                   <div key={title} className="timeline__detail-show">
+                    <span
+                      className="timeline__detail-color"
+                      style={{ background: showColorMap.get(title) ?? SHOW_COLORS[0] }}
+                    />
+                    <span className="timeline__detail-show-count">{count}</span>
                     <span className="timeline__detail-show-title">{title}</span>
-                    <span className="timeline__detail-show-count">{count} ep{count !== 1 ? 's' : ''}</span>
                   </div>
                 ))}
               </div>
@@ -139,7 +224,7 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
 /* ────────────────────────────────────────────────────────── */
 interface ShowSeasonData {
   title: string;
-  seasons: Map<number, number>; // seasonNumber -> missing count
+  seasons: Map<number, number>;
   totalMissing: number;
 }
 
@@ -203,168 +288,75 @@ function SeasonGrid({ entries }: { entries: MissingTimelineEntry[] }) {
 }
 
 /* ────────────────────────────────────────────────────────── */
-/*  View C: Cumulative Timeline (SVG)                        */
+/*  View C: Yearly Bar Graph (replaces Cumulative)           */
+/*  - One bar per year, not cumulative                       */
 /* ────────────────────────────────────────────────────────── */
-function CumulativeTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string } | null>(null);
-
-  const sorted = useMemo(
-    () => [...entries].sort((a, b) => a.airDateUtc.localeCompare(b.airDateUtc)),
-    [entries]
-  );
-
-  const points = useMemo(() => {
-    if (sorted.length === 0) return [];
-    // Bucket by month for smoother lines
-    const map = new Map<string, number>();
-    let cumulative = 0;
-    for (const ep of sorted) {
-      const d = new Date(ep.airDateUtc);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      cumulative++;
-      map.set(key, cumulative);
-    }
-    return Array.from(map.entries()).map(([key, total]) => ({
-      key,
-      date: new Date(key + '-15'),
-      total,
-    }));
-  }, [sorted]);
-
-  if (points.length < 2) return <div className="cumulative"><p style={{ color: 'var(--text-muted)', padding: 20 }}>Not enough data for chart.</p></div>;
-
-  const W = 800;
-  const H = 300;
-  const PAD = { top: 20, right: 30, bottom: 40, left: 50 };
-  const innerW = W - PAD.left - PAD.right;
-  const innerH = H - PAD.top - PAD.bottom;
-
-  const minTime = points[0].date.getTime();
-  const maxTime = points[points.length - 1].date.getTime();
-  const timeRange = maxTime - minTime || 1;
-  const maxTotal = points[points.length - 1].total;
-
-  const xScale = (t: number) => PAD.left + ((t - minTime) / timeRange) * innerW;
-  const yScale = (v: number) => PAD.top + innerH - (v / maxTotal) * innerH;
-
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xScale(p.date.getTime())},${yScale(p.total)}`).join(' ');
-  const areaPath = linePath + ` L${xScale(maxTime)},${yScale(0)} L${xScale(minTime)},${yScale(0)} Z`;
-
-  // Year tick marks
-  const startYear = points[0].date.getFullYear();
-  const endYear = points[points.length - 1].date.getFullYear();
-  const yearTicks: { x: number; label: string }[] = [];
-  for (let y = startYear; y <= endYear; y++) {
-    const t = new Date(y, 0, 1).getTime();
-    if (t >= minTime && t <= maxTime) {
-      yearTicks.push({ x: xScale(t), label: String(y) });
-    }
-  }
-
-  // Horizontal grid lines
-  const gridLines: number[] = [];
-  const step = Math.ceil(maxTotal / 5 / 10) * 10 || 10;
-  for (let v = step; v < maxTotal; v += step) {
-    gridLines.push(v);
-  }
-
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mx = ((e.clientX - rect.left) / rect.width) * W;
-    const my = ((e.clientY - rect.top) / rect.height) * H;
-    if (mx < PAD.left || mx > W - PAD.right || my < PAD.top || my > H - PAD.bottom) {
-      setTooltip(null);
-      return;
-    }
-    const time = minTime + ((mx - PAD.left) / innerW) * timeRange;
-    // Find closest point
-    let closest = points[0];
-    let closestDist = Infinity;
-    for (const p of points) {
-      const dist = Math.abs(p.date.getTime() - time);
-      if (dist < closestDist) { closestDist = dist; closest = p; }
-    }
-    const d = closest.date;
-    setTooltip({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top - 30,
-      label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}: ${closest.total} total missing`,
-    });
-  };
-
-  return (
-    <div className="cumulative" ref={containerRef} style={{ position: 'relative' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} className="cumulative__svg" onMouseMove={handleMouseMove} onMouseLeave={() => setTooltip(null)}>
-        {gridLines.map(v => (
-          <g key={v}>
-            <line className="cumulative__grid-line" x1={PAD.left} x2={W - PAD.right} y1={yScale(v)} y2={yScale(v)} />
-            <text className="cumulative__axis-label" x={PAD.left - 6} y={yScale(v) + 4} textAnchor="end">{v}</text>
-          </g>
-        ))}
-        <path d={areaPath} className="cumulative__area" />
-        <path d={linePath} className="cumulative__line" />
-        {yearTicks.map(t => (
-          <g key={t.label}>
-            <line className="cumulative__grid-line" x1={t.x} x2={t.x} y1={PAD.top} y2={H - PAD.bottom} />
-            <text className="cumulative__axis-label" x={t.x} y={H - PAD.bottom + 16} textAnchor="middle">{t.label}</text>
-          </g>
-        ))}
-        <text className="cumulative__axis-label" x={PAD.left - 6} y={yScale(maxTotal) + 4} textAnchor="end">{maxTotal}</text>
-      </svg>
-      {tooltip && (
-        <div className="cumulative__tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
-          {tooltip.label}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ────────────────────────────────────────────────────────── */
-/*  View D: Year Summary Cards                               */
-/* ────────────────────────────────────────────────────────── */
-function YearCards({ entries }: { entries: MissingTimelineEntry[] }) {
+function YearlyBarGraph({ entries }: { entries: MissingTimelineEntry[] }) {
   const years = useMemo(() => {
-    const map = new Map<number, { count: number; shows: Map<string, number> }>();
+    const map = new Map<number, number>();
     for (const ep of entries) {
       if (!ep.airDateUtc) continue;
       const year = new Date(ep.airDateUtc).getFullYear();
-      let y = map.get(year);
-      if (!y) { y = { count: 0, shows: new Map() }; map.set(year, y); }
-      y.count++;
-      y.shows.set(ep.seriesTitle, (y.shows.get(ep.seriesTitle) ?? 0) + 1);
+      map.set(year, (map.get(year) ?? 0) + 1);
     }
     return Array.from(map.entries())
-      .sort((a, b) => b[0] - a[0])
-      .map(([year, data]) => ({
-        year,
-        count: data.count,
-        topShows: Array.from(data.shows.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5),
-      }));
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, count]) => ({ year, count }));
   }, [entries]);
 
   const maxCount = Math.max(...years.map(y => y.count), 1);
 
   return (
-    <div className="year-cards">
-      {years.map(y => (
-        <div key={y.year} className="year-card">
-          <div className="year-card__year">{y.year}</div>
-          <div className="year-card__count">{y.count} missing episode{y.count !== 1 ? 's' : ''}</div>
-          <div className="year-card__bar-track">
-            <div className="year-card__bar" style={{ width: `${(y.count / maxCount) * 100}%` }} />
+    <div className="timeline__chart">
+      {years.map(y => {
+        const pct = (y.count / maxCount) * 100;
+        return (
+          <div key={y.year} className="timeline__row" style={{ cursor: 'default' }}>
+            <div className="timeline__bar-track">
+              <div className="timeline__bar" style={{ width: `${Math.max(pct, 1)}%` }} />
+            </div>
+            <span className="timeline__month-label">{y.year}</span>
+            <span className="timeline__bar-count">{y.count}</span>
           </div>
-          <div className="year-card__shows">
-            {y.topShows.map(([title, count]) => (
-              <div key={title} className="year-card__show-row">
-                <span className="year-card__show-name" title={title}>{title}</span>
-                <span className="year-card__show-count">{count}</span>
-              </div>
-            ))}
+        );
+      })}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────── */
+/*  View D: By Year — Bar graph per show, ordered by count   */
+/* ────────────────────────────────────────────────────────── */
+function ByYearShowBars({ entries }: { entries: MissingTimelineEntry[] }) {
+  const shows = useMemo(() => {
+    const map = new Map<number, { title: string; count: number }>();
+    for (const ep of entries) {
+      let s = map.get(ep.seriesId);
+      if (!s) {
+        s = { title: ep.seriesTitle, count: 0 };
+        map.set(ep.seriesId, s);
+      }
+      s.count++;
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [entries]);
+
+  const maxCount = Math.max(shows[0]?.count ?? 1, 1);
+
+  return (
+    <div className="timeline__chart">
+      {shows.map(show => {
+        const pct = (show.count / maxCount) * 100;
+        return (
+          <div key={show.title} className="timeline__row" style={{ cursor: 'default' }}>
+            <div className="timeline__bar-track">
+              <div className="timeline__bar" style={{ width: `${Math.max(pct, 1)}%` }} />
+            </div>
+            <span className="timeline__show-bar-label" title={show.title}>{show.title}</span>
+            <span className="timeline__bar-count">{show.count}</span>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -406,7 +398,6 @@ function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
   const range = globalMax - globalMin || 1;
   const toPct = (t: number) => ((t - globalMin) / range) * 100;
 
-  // Year markers
   const startYear = new Date(globalMin).getFullYear();
   const endYear = new Date(globalMax).getFullYear();
   const yearMarkers: { pct: number; label: string }[] = [];
@@ -454,10 +445,177 @@ function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
 }
 
 /* ────────────────────────────────────────────────────────── */
+/*  View F: Calendar                                          */
+/*  - Monthly calendar grid, navigate by month/year           */
+/* ────────────────────────────────────────────────────────── */
+const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
+  // Find the min/max dates to know the navigable range
+  const { minDate, maxDate, dateMap } = useMemo(() => {
+    const map = new Map<string, MissingTimelineEntry[]>();
+    let min = Infinity, max = -Infinity;
+    for (const ep of entries) {
+      if (!ep.airDateUtc) continue;
+      const d = new Date(ep.airDateUtc);
+      const t = d.getTime();
+      if (t < min) min = t;
+      if (t > max) max = t;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const arr = map.get(key);
+      if (arr) arr.push(ep);
+      else map.set(key, [ep]);
+    }
+    return {
+      minDate: new Date(min),
+      maxDate: new Date(max),
+      dateMap: map,
+    };
+  }, [entries]);
+
+  const [year, setYear] = useState(() => maxDate.getFullYear());
+  const [month, setMonth] = useState(() => maxDate.getMonth());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  const minYear = minDate.getFullYear();
+  const maxYear = maxDate.getFullYear();
+
+  // Build calendar grid for the current month
+  const { weeks, monthTotal } = useMemo(() => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const wks: { day: number; key: string; count: number }[][] = [];
+    let currentWeek: { day: number; key: string; count: number }[] = [];
+    let total = 0;
+
+    // Pad the first week
+    for (let i = 0; i < firstDay; i++) {
+      currentWeek.push({ day: 0, key: '', count: 0 });
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const count = dateMap.get(key)?.length ?? 0;
+      total += count;
+      currentWeek.push({ day: d, key, count });
+      if (currentWeek.length === 7) {
+        wks.push(currentWeek);
+        currentWeek = [];
+      }
+    }
+
+    // Pad the last week
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) {
+        currentWeek.push({ day: 0, key: '', count: 0 });
+      }
+      wks.push(currentWeek);
+    }
+
+    return { weeks: wks, monthTotal: total };
+  }, [year, month, dateMap]);
+
+  const prevMonth = () => {
+    if (month === 0) { setYear((y: number) => y - 1); setMonth(11); }
+    else setMonth((m: number) => m - 1);
+  };
+
+  const nextMonth = () => {
+    if (month === 11) { setYear((y: number) => y + 1); setMonth(0); }
+    else setMonth((m: number) => m + 1);
+  };
+
+  const canPrev = year > minYear || month > minDate.getMonth() || year > minYear;
+  const canNext = year < maxYear || month < maxDate.getMonth() || year < maxYear;
+
+  const selectedEntries = selectedDay ? dateMap.get(selectedDay) ?? [] : [];
+
+  // Find max count for heat-map intensity
+  const maxDayCount = useMemo(() => {
+    let max = 0;
+    for (const wk of weeks) {
+      for (const d of wk) {
+        if (d.count > max) max = d.count;
+      }
+    }
+    return Math.max(max, 1);
+  }, [weeks]);
+
+  return (
+    <div className="calendar">
+      <div className="calendar__nav">
+        <button className="calendar__nav-btn" onClick={prevMonth} disabled={!canPrev}>&lt;</button>
+        <div className="calendar__nav-center">
+          <select
+            className="calendar__select"
+            value={month}
+            onChange={e => setMonth(Number(e.target.value))}
+          >
+            {MONTH_NAMES.map((name, i) => (
+              <option key={i} value={i}>{name}</option>
+            ))}
+          </select>
+          <select
+            className="calendar__select"
+            value={year}
+            onChange={e => setYear(Number(e.target.value))}
+          >
+            {Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <span className="calendar__month-total">{monthTotal} missing</span>
+        </div>
+        <button className="calendar__nav-btn" onClick={nextMonth} disabled={!canNext}>&gt;</button>
+      </div>
+
+      <div className="calendar__grid">
+        {DAY_HEADERS.map(d => (
+          <div key={d} className="calendar__day-header">{d}</div>
+        ))}
+        {weeks.flat().map((cell, i) => (
+          <div
+            key={i}
+            className={`calendar__cell${cell.day === 0 ? ' calendar__cell--empty' : ''}${cell.count > 0 ? ' calendar__cell--has-episodes' : ''}${cell.key === selectedDay ? ' calendar__cell--selected' : ''}`}
+            onClick={() => cell.day > 0 && cell.count > 0 && setSelectedDay(cell.key === selectedDay ? null : cell.key)}
+            style={cell.count > 0 ? { '--intensity': cell.count / maxDayCount } as React.CSSProperties : undefined}
+          >
+            {cell.day > 0 && (
+              <>
+                <span className="calendar__cell-day">{cell.day}</span>
+                {cell.count > 0 && <span className="calendar__cell-count">{cell.count}</span>}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {selectedDay && selectedEntries.length > 0 && (
+        <div className="calendar__detail">
+          <div className="calendar__detail-header">
+            {new Date(selectedDay + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            — {selectedEntries.length} episode{selectedEntries.length !== 1 ? 's' : ''}
+          </div>
+          {selectedEntries.map((ep, i) => (
+            <div key={i} className="calendar__detail-row">
+              <span className="calendar__detail-show">{ep.seriesTitle}</span>
+              <span className="calendar__detail-ep">
+                S{String(ep.seasonNumber).padStart(2, '0')}E{String(ep.episodeNumber).padStart(2, '0')}
+              </span>
+              <span className="calendar__detail-title">{ep.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────── */
 /*  Main component                                           */
 /* ────────────────────────────────────────────────────────── */
 export function MissingTimeline({ getMissingTimeline }: MissingTimelineProps) {
-  const [entries, setEntries] = useState<MissingTimelineEntry[] | null>(null);
+  const [rawEntries, setRawEntries] = useState<MissingTimelineEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<TimelineView>('histogram');
@@ -466,10 +624,12 @@ export function MissingTimeline({ getMissingTimeline }: MissingTimelineProps) {
     let cancelled = false;
     setLoading(true);
     getMissingTimeline()
-      .then(data => { if (!cancelled) { setEntries(data); setLoading(false); } })
+      .then(data => { if (!cancelled) { setRawEntries(data); setLoading(false); } })
       .catch(err => { if (!cancelled) { setError(err instanceof Error ? err.message : 'Failed'); setLoading(false); } });
     return () => { cancelled = true; };
   }, [getMissingTimeline]);
+
+  const entries = useMemo(() => rawEntries ? filterEpochDates(rawEntries) : null, [rawEntries]);
 
   if (loading) return <div className="timeline__loading loading">Loading timeline</div>;
   if (error) return <div className="error-banner">{error}</div>;
@@ -500,9 +660,10 @@ export function MissingTimeline({ getMissingTimeline }: MissingTimelineProps) {
 
       {view === 'histogram' && <MonthlyHistogram entries={entries} />}
       {view === 'grid' && <SeasonGrid entries={entries} />}
-      {view === 'cumulative' && <CumulativeTimeline entries={entries} />}
-      {view === 'years' && <YearCards entries={entries} />}
+      {view === 'yearly' && <YearlyBarGraph entries={entries} />}
+      {view === 'years' && <ByYearShowBars entries={entries} />}
       {view === 'shows' && <ShowTimeline entries={entries} />}
+      {view === 'calendar' && <CalendarView entries={entries} />}
     </div>
   );
 }

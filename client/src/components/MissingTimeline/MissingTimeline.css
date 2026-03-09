@@ -125,10 +125,49 @@
   color: var(--text-primary);
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.timeline__year-total {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.timeline__bar-stacked {
+  height: 100%;
+  display: flex;
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 2px;
+}
+
+.timeline__bar-segment {
+  height: 100%;
+  min-width: 1px;
+  transition: opacity 0.15s;
+}
+
+.timeline__bar-segment:hover {
+  opacity: 0.8;
+}
+
+.timeline__show-bar-label {
+  min-width: 120px;
+  max-width: 160px;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timeline__detail {
-  margin: 2px 0 6px 83px;
+  margin: 2px 0 6px 0;
   padding: 8px 12px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
@@ -140,9 +179,24 @@
 
 .timeline__detail-show {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
   padding: 2px 0;
   color: var(--text-secondary);
+}
+
+.timeline__detail-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.timeline__detail-show-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 20px;
 }
 
 .timeline__detail-show-title {
@@ -150,12 +204,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.timeline__detail-show-count {
-  color: var(--text-muted);
-  margin-left: 12px;
-  flex-shrink: 0;
 }
 
 /* ── Season Grid (View B) ──────────────────────────────── */
@@ -244,116 +292,7 @@
   flex-shrink: 0;
 }
 
-/* ── Cumulative SVG chart (View C) ──────────────────────── */
-.cumulative {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.cumulative__svg {
-  width: 100%;
-  height: 300px;
-}
-
-.cumulative__area {
-  fill: rgba(52, 152, 219, 0.15);
-}
-
-.cumulative__line {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-}
-
-.cumulative__axis-label {
-  fill: var(--text-muted);
-  font-size: 11px;
-}
-
-.cumulative__grid-line {
-  stroke: var(--border);
-  stroke-width: 0.5;
-}
-
-.cumulative__tooltip {
-  position: absolute;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 0.75rem;
-  color: var(--text-primary);
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 10;
-}
-
-/* ── Year Cards (View D) ────────────────────────────────── */
-.year-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.year-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
-}
-
-.year-card__year {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.year-card__count {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.year-card__bar-track {
-  height: 6px;
-  background: var(--bg-primary);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-.year-card__bar {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 3px;
-}
-
-.year-card__shows {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.year-card__show-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 1px 0;
-}
-
-.year-card__show-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.year-card__show-count {
-  margin-left: 8px;
-  flex-shrink: 0;
-  color: var(--text-secondary);
-}
+/* (Cumulative and Year Card views removed — replaced by Yearly Bar Graph and By Year Show Bars) */
 
 /* ── Show Timeline (View E) ─────────────────────────────── */
 .show-timeline {
@@ -428,6 +367,176 @@
   transform: translateX(-50%);
 }
 
+/* ── Calendar (View F) ─────────────────────────────────── */
+.calendar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.calendar__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.calendar__nav-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.calendar__nav-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+
+.calendar__nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.calendar__nav-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendar__select {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.calendar__month-total {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar__day-header {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 0 8px;
+}
+
+.calendar__cell {
+  aspect-ratio: 1;
+  min-height: 48px;
+  border-radius: 4px;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: default;
+  position: relative;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.calendar__cell--empty {
+  background: transparent;
+}
+
+.calendar__cell--has-episodes {
+  background: rgba(52, 152, 219, calc(0.12 + 0.5 * var(--intensity, 0)));
+  cursor: pointer;
+}
+
+.calendar__cell--has-episodes:hover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.calendar__cell--selected {
+  box-shadow: 0 0 0 2px var(--accent);
+  background: rgba(52, 152, 219, calc(0.2 + 0.5 * var(--intensity, 0)));
+}
+
+.calendar__cell-day {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.calendar__cell-count {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.calendar__detail {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.calendar__detail-header {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.calendar__detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.calendar__detail-show {
+  min-width: 140px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: var(--text-primary);
+}
+
+.calendar__detail-ep {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-family: monospace;
+  font-size: 0.72rem;
+}
+
+.calendar__detail-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Loading / empty ────────────────────────────────────── */
 .timeline__loading {
   display: flex;
@@ -455,7 +564,12 @@
   }
 
   .timeline__detail {
-    margin-left: 63px;
+    margin-left: 0;
+  }
+
+  .timeline__show-bar-label {
+    min-width: 80px;
+    max-width: 100px;
   }
 
   .season-grid__title,
@@ -477,7 +591,4 @@
     font-size: 0.72rem;
   }
 
-  .year-cards {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
 }
