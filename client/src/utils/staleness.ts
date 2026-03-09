@@ -1,9 +1,15 @@
 import { StalenessLevel, StalenessThresholds, DEFAULT_THRESHOLDS } from '../types/common';
 
-export function getStaleness(dateAdded: string, thresholds?: StalenessThresholds): StalenessLevel {
+export function getStaleness(dateAdded: string, thresholds?: StalenessThresholds, releaseDate?: string): StalenessLevel {
   const t = thresholds || DEFAULT_THRESHOLDS;
+  // If added before release, staleness starts from release date
+  let referenceDate = new Date(dateAdded).getTime();
+  if (releaseDate) {
+    const releaseTime = new Date(releaseDate).getTime();
+    if (releaseTime > referenceDate) referenceDate = releaseTime;
+  }
   const days = Math.floor(
-    (Date.now() - new Date(dateAdded).getTime()) / (1000 * 60 * 60 * 24)
+    (Date.now() - referenceDate) / (1000 * 60 * 60 * 24)
   );
   if (days < t.staleDays) return StalenessLevel.Fresh;
   if (days < t.veryStaledays) return StalenessLevel.Stale;

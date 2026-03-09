@@ -40,7 +40,7 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
     let result = [...items];
 
     if (stalenessFilter !== 'all') {
-      result = result.filter(item => getStaleness(item.dateAdded, thresholds) === stalenessFilter);
+      result = result.filter(item => getStaleness(item.dateAdded, thresholds, item.lastAired) === stalenessFilter);
     }
 
     result.sort((a, b) => {

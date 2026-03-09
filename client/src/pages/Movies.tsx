@@ -90,7 +90,7 @@ export function Movies() {
               remotePosterUrl={item.remotePosterUrl}
               dateAdded={item.dateAdded}
               showDateAdded={sortBy === 'dateAdded'}
-              stalenessLevel={getStaleness(item.dateAdded, thresholds)}
+              stalenessLevel={getStaleness(item.dateAdded, thresholds, item.lastAired)}
               type="movie"
               radarrUrl={radarrUrl}
               radarrMovieId={item.id}

@@ -93,7 +93,7 @@ export function Shows() {
               remotePosterUrl={item.remotePosterUrl}
               dateAdded={item.dateAdded}
               showDateAdded={sortBy === 'dateAdded'}
-              stalenessLevel={getStaleness(item.dateAdded, thresholds)}
+              stalenessLevel={getStaleness(item.dateAdded, thresholds, item.lastAired)}
               type="show"
               episodeFileCount={item.episodeFileCount}
               episodeCount={item.episodeCount}
