@@ -22,13 +22,23 @@ function isEpochDate(dateStr: string): boolean {
   return Math.abs(t) < 48 * 60 * 60 * 1000;
 }
 
-// Generate distinct colors for show segments in stacked bars
-const SHOW_COLORS = [
+// Generate distinct colors for show segments — handles any number of shows
+const SEED_COLORS = [
   '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
   '#1abc9c', '#e67e22', '#34495e', '#d35400', '#27ae60',
   '#8e44ad', '#c0392b', '#16a085', '#f1c40f', '#2980b9',
   '#7f8c8d', '#e84393', '#00cec9', '#fdcb6e', '#6c5ce7',
 ];
+
+/** Returns a visually distinct color for a given index. Uses seed colors first, then generates via golden-angle HSL. */
+function getShowColor(index: number): string {
+  if (index < SEED_COLORS.length) return SEED_COLORS[index];
+  // Golden angle (~137.5°) produces well-distributed hues
+  const hue = (index * 137.508) % 360;
+  const saturation = 55 + (index % 3) * 10; // 55%, 65%, 75%
+  const lightness = 45 + (index % 4) * 5;   // 45%, 50%, 55%, 60%
+  return `hsl(${Math.round(hue)}, ${saturation}%, ${lightness}%)`;
+}
 
 interface MissingTimelineProps {
   getMissingTimeline: () => Promise<MissingTimelineEntry[]>;
@@ -110,7 +120,7 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
     }
     const sorted = Array.from(countByShow.entries()).sort((a, b) => b[1] - a[1]);
     const map = new Map<string, string>();
-    sorted.forEach(([title], i) => map.set(title, SHOW_COLORS[i % SHOW_COLORS.length]));
+    sorted.forEach(([title], i) => map.set(title, getShowColor(i)));
     return map;
   }, [entries]);
 
@@ -167,7 +177,7 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
           title,
           count,
           pct: (count / bucket.count) * pct,
-          color: showColorMap.get(title) ?? SHOW_COLORS[0],
+          color: showColorMap.get(title) ?? getShowColor(0),
         }));
 
         return (
@@ -203,7 +213,7 @@ function MonthlyHistogram({ entries }: { entries: MissingTimelineEntry[] }) {
                   <div key={title} className="timeline__detail-show">
                     <span
                       className="timeline__detail-color"
-                      style={{ background: showColorMap.get(title) ?? SHOW_COLORS[0] }}
+                      style={{ background: showColorMap.get(title) ?? getShowColor(0) }}
                     />
                     <span className="timeline__detail-show-count">{count}</span>
                     <span className="timeline__detail-show-title">{title}</span>
