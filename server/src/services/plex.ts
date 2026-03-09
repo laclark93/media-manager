@@ -167,18 +167,28 @@ export async function findShowByFilePath(
     console.log(`[TRACE] plex findShowByFilePath: section "${section.title}" has ${shows.length} shows (${showsWithLoc} with Location data)`);
 
     for (const show of shows) {
+      // Try Location paths first
       const locations: string[] = (show.Location || []).map((l: any) => l.path?.replace(/\\/g, '/') || '');
       for (const loc of locations) {
         const locFolder = (loc.split('/').pop() || '').toLowerCase();
         if (!locFolder) continue;
         const locStripped = stripYear(locFolder);
 
-        // Match: exact, year-stripped, or one starts with the other (e.g. "full moon" ↔ "full moon wo sagashite")
         for (const name of namesToMatch) {
           if (locFolder === name || locStripped === name || locFolder.startsWith(name) || name.startsWith(locFolder) || locStripped.startsWith(name) || name.startsWith(locStripped)) {
             console.log(`[TRACE] plex findShowByFilePath: matched "${show.title}" via folder "${locFolder}" ↔ "${name}"`);
             return { ratingKey: show.ratingKey, title: show.title, year: show.year ?? 0 };
           }
+        }
+      }
+
+      // Fallback: match against Plex show title (handles cases where Location isn't returned)
+      const plexTitle = (show.title || '').toLowerCase();
+      const plexTitleStripped = stripYear(plexTitle);
+      for (const name of namesToMatch) {
+        if (plexTitle === name || plexTitleStripped === name || plexTitle.startsWith(name) || name.startsWith(plexTitle) || plexTitleStripped.startsWith(name) || name.startsWith(plexTitleStripped)) {
+          console.log(`[TRACE] plex findShowByFilePath: matched "${show.title}" via title "${plexTitle}" ↔ "${name}"`);
+          return { ratingKey: show.ratingKey, title: show.title, year: show.year ?? 0 };
         }
       }
     }
@@ -240,6 +250,16 @@ export async function findMovieByFilePath(
             console.log(`[TRACE] plex findMovieByFilePath: matched "${movie.title}" via folder "${locFolder}" ↔ "${name}"`);
             return { ratingKey: movie.ratingKey, title: movie.title, year: movie.year ?? 0 };
           }
+        }
+      }
+
+      // Fallback: match against Plex movie title
+      const plexTitle = (movie.title || '').toLowerCase();
+      const plexTitleStripped = stripYear(plexTitle);
+      for (const name of namesToMatch) {
+        if (plexTitle === name || plexTitleStripped === name || plexTitle.startsWith(name) || name.startsWith(plexTitle) || plexTitleStripped.startsWith(name) || name.startsWith(plexTitleStripped)) {
+          console.log(`[TRACE] plex findMovieByFilePath: matched "${movie.title}" via title "${plexTitle}" ↔ "${name}"`);
+          return { ratingKey: movie.ratingKey, title: movie.title, year: movie.year ?? 0 };
         }
       }
     }
