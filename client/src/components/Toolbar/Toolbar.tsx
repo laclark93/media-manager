@@ -2,6 +2,19 @@ import { useState } from 'react';
 import { StalenessLevel, SortOption } from '../../types/common';
 import './Toolbar.css';
 
+export interface SortOptionDef {
+  value: SortOption;
+  label: string;
+}
+
+export const DEFAULT_SORT_OPTIONS: SortOptionDef[] = [
+  { value: 'title', label: 'Title' },
+  { value: 'dateAdded', label: 'Date Added' },
+  { value: 'lastAired', label: 'Last Aired' },
+  { value: 'percentMissing', label: '% Missing' },
+  { value: 'numberMissing', label: '# Missing' },
+];
+
 interface ToolbarProps {
   sortBy: SortOption;
   sortDir: 'asc' | 'desc';
@@ -15,6 +28,7 @@ interface ToolbarProps {
   refreshing?: boolean;
   onSearchAll?: () => Promise<void>;
   searchAllLabel?: string;
+  sortOptions?: SortOptionDef[];
 }
 
 const STALENESS_OPTIONS: { value: StalenessLevel | 'all'; label: string }[] = [
@@ -38,6 +52,7 @@ export function Toolbar({
   refreshing,
   onSearchAll,
   searchAllLabel,
+  sortOptions = DEFAULT_SORT_OPTIONS,
 }: ToolbarProps) {
   const [searchState, setSearchState] = useState<'idle' | 'searching' | 'queued'>('idle');
 
@@ -62,11 +77,9 @@ export function Toolbar({
           value={sortBy}
           onChange={(e) => onSortChange(e.target.value as SortOption)}
         >
-          <option value="title">Title</option>
-          <option value="dateAdded">Date Added</option>
-          <option value="lastAired">Last Aired</option>
-          <option value="percentMissing">% Missing</option>
-          <option value="numberMissing"># Missing</option>
+          {sortOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
         <button
           className="toolbar__dir-btn"

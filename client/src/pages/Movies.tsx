@@ -6,7 +6,13 @@ import { useActivityLog } from '../hooks/useActivityLog';
 import { getStaleness } from '../utils/staleness';
 import { getRadarrPosterUrl, getRadarrRemotePoster } from '../utils/images';
 import { MediaCard } from '../components/MediaCard/MediaCard';
-import { Toolbar } from '../components/Toolbar/Toolbar';
+import { Toolbar, SortOptionDef } from '../components/Toolbar/Toolbar';
+
+const MOVIE_SORT_OPTIONS: SortOptionDef[] = [
+  { value: 'title', label: 'Title' },
+  { value: 'dateAdded', label: 'Date Added' },
+  { value: 'lastAired', label: 'Release Date' },
+];
 
 interface MovieItem {
   id: number;
@@ -65,6 +71,7 @@ export function Movies() {
           } catch { updateEntry(eid, 'error', 'Failed'); }
         }}
         searchAllLabel={`Search All (${filteredCount})`}
+        sortOptions={MOVIE_SORT_OPTIONS}
       />
       {filtered.length === 0 ? (
         <div className="empty-state">

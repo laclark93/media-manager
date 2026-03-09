@@ -72,6 +72,13 @@ export async function deleteEpisodeFile(baseUrl: string, apiKey: string, fileId:
   await client(baseUrl, apiKey).delete(`/api/v3/episodefile/${fileId}`);
 }
 
+export async function getWantedMissing(baseUrl: string, apiKey: string): Promise<{ seriesId: number; airDateUtc: string }[]> {
+  const resp = await client(baseUrl, apiKey).get('/api/v3/wanted/missing', {
+    params: { pageSize: 10000, sortKey: 'airDateUtc', sortDirection: 'descending' },
+  });
+  return (resp.data.records || []).map((r: any) => ({ seriesId: r.seriesId, airDateUtc: r.airDateUtc }));
+}
+
 export async function proxyImage(baseUrl: string, apiKey: string, imagePath: string) {
   const resp = await client(baseUrl, apiKey).get(`/${imagePath}`, {
     responseType: 'stream',

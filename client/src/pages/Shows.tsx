@@ -39,7 +39,7 @@ export function Shows() {
       posterUrl: getSonarrPosterUrl(s),
       remotePosterUrl: getSonarrRemotePoster(s),
       dateAdded: s.dateAdded,
-      lastAired: s.previousAiring,
+      lastAired: s.latestMissingAirDate || s.previousAiring,
       episodeFileCount: s.statistics.episodeFileCount,
       episodeCount: s.statistics.episodeCount,
       titleSlug: s.titleSlug,

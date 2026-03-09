@@ -35,12 +35,29 @@ router.get('/series', async (_req: Request, res: Response) => {
       res.status(400).json({ error: 'Sonarr not configured' });
       return;
     }
-    const allSeries = await sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey);
+    const [allSeries, wantedMissing] = await Promise.all([
+      sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey),
+      sonarrService.getWantedMissing(config.sonarrUrl, config.sonarrApiKey),
+    ]);
     const missingSeries = allSeries.filter(
       (s) => s.monitored && s.statistics && s.statistics.episodeCount > s.statistics.episodeFileCount
     );
+    // Compute latest missing episode air date per series
+    const latestMissingBySeriesId = new Map<number, string>();
+    for (const ep of wantedMissing) {
+      if (ep.airDateUtc) {
+        const existing = latestMissingBySeriesId.get(ep.seriesId);
+        if (!existing || ep.airDateUtc > existing) {
+          latestMissingBySeriesId.set(ep.seriesId, ep.airDateUtc);
+        }
+      }
+    }
+    const enriched = missingSeries.map(s => ({
+      ...s,
+      latestMissingAirDate: latestMissingBySeriesId.get(s.id) ?? null,
+    }));
     console.log(`[INFO] Sonarr series: ${missingSeries.length} missing (of ${allSeries.length} total)`);
-    res.json(missingSeries);
+    res.json(enriched);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
     res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });

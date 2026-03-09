@@ -12,6 +12,7 @@ export interface SonarrSeries {
   statistics: SonarrStatistics;
   dateAdded: string;
   previousAiring?: string;
+  latestMissingAirDate?: string;
 }
 
 export interface SonarrImage {
