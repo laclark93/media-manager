@@ -40,7 +40,7 @@ export function Movies() {
   );
 
   const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, totalCount, filteredCount } =
-    useFilter(items, thresholds);
+    useFilter(items, thresholds, 'movies');
 
   if (loading) return <div className="page"><div className="loading">Loading movies</div></div>;
 

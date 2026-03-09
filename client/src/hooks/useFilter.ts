@@ -10,10 +10,31 @@ interface Filterable {
   episodeCount?: number;
 }
 
-export function useFilter<T extends Filterable>(items: T[], thresholds?: StalenessThresholds) {
-  const [sortBy, setSortBy] = useState<SortOption>('dateAdded');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+export function useFilter<T extends Filterable>(items: T[], thresholds?: StalenessThresholds, storageKey?: string) {
+  const [sortBy, _setSortBy] = useState<SortOption>(() => {
+    if (storageKey) {
+      const saved = localStorage.getItem(`${storageKey}.sortBy`);
+      if (saved && ['title', 'dateAdded', 'lastAired', 'percentMissing', 'numberMissing'].includes(saved)) return saved as SortOption;
+    }
+    return 'dateAdded';
+  });
+  const [sortDir, _setSortDir] = useState<'asc' | 'desc'>(() => {
+    if (storageKey) {
+      const saved = localStorage.getItem(`${storageKey}.sortDir`);
+      if (saved === 'asc' || saved === 'desc') return saved;
+    }
+    return 'asc';
+  });
   const [stalenessFilter, setStalenessFilter] = useState<StalenessLevel | 'all'>('all');
+
+  const setSortBy = (v: SortOption) => {
+    _setSortBy(v);
+    if (storageKey) localStorage.setItem(`${storageKey}.sortBy`, v);
+  };
+  const setSortDir = (v: 'asc' | 'desc') => {
+    _setSortDir(v);
+    if (storageKey) localStorage.setItem(`${storageKey}.sortDir`, v);
+  };
 
   const filtered = useMemo(() => {
     let result = [...items];

@@ -118,8 +118,19 @@ interface SubtitleSectionProps {
 
 function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfigured, loading, error, onRefresh, onIgnore, onRestore, defaultOpen = true }: SubtitleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
-  const [sortBy, setSortBy] = useState<SubtitleSort>('missing');
-  const [sortAsc, setSortAsc] = useState(false);
+  const [sortBy, _setSortBy] = useState<SubtitleSort>(() => {
+    const saved = localStorage.getItem('subtitles.sortBy');
+    if (saved && ['missing', 'title', 'year'].includes(saved)) return saved as SubtitleSort;
+    return 'missing';
+  });
+  const [sortAsc, _setSortAsc] = useState(() => {
+    const saved = localStorage.getItem('subtitles.sortAsc');
+    return saved === 'true';
+  });
+  const setSortBy = (v: SubtitleSort) => { _setSortBy(v); localStorage.setItem('subtitles.sortBy', v); };
+  const setSortAsc = (v: boolean | ((prev: boolean) => boolean)) => {
+    _setSortAsc(prev => { const next = typeof v === 'function' ? v(prev) : v; localStorage.setItem('subtitles.sortAsc', String(next)); return next; });
+  };
   const [showIgnored, setShowIgnored] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SubtitleMissing | null>(null);
 

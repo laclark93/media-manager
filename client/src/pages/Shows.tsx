@@ -48,7 +48,7 @@ export function Shows() {
   );
 
   const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, totalCount, filteredCount } =
-    useFilter(items, thresholds);
+    useFilter(items, thresholds, 'shows');
 
   const selectedSeries = series.find(s => s.id === selectedSeriesId);
 
