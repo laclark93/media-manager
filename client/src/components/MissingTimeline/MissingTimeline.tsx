@@ -603,6 +603,24 @@ const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June'
 
 interface CalendarCell { day: number; key: string; count: number }
 
+/** Map 0..1 intensity to green → yellow → orange → red */
+function getHeatColor(t: number): string {
+  // 4-stop gradient: green(0) → yellow(0.33) → orange(0.66) → red(1)
+  const stops: [number, number, number][] = [
+    [76, 175, 80],   // green
+    [205, 220, 57],  // lime-yellow
+    [255, 152, 0],   // orange
+    [211, 47, 47],   // red
+  ];
+  const scaled = t * (stops.length - 1);
+  const i = Math.min(Math.floor(scaled), stops.length - 2);
+  const f = scaled - i;
+  const r = Math.round(stops[i][0] + (stops[i + 1][0] - stops[i][0]) * f);
+  const g = Math.round(stops[i][1] + (stops[i + 1][1] - stops[i][1]) * f);
+  const b = Math.round(stops[i][2] + (stops[i + 1][2] - stops[i][2]) * f);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function buildMonthGrid(year: number, month: number, dateMap: Map<string, MissingTimelineEntry[]>): { weeks: CalendarCell[][]; total: number } {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -685,7 +703,7 @@ function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
         <span className="calendar__legend-label">Less</span>
         <div className="calendar__legend-scale">
           {[0, 0.2, 0.4, 0.6, 0.8, 1].map(v => (
-            <div key={v} className="calendar__legend-swatch" style={{ background: `hsl(${120 - 120 * v}, 65%, 42%)` }} />
+            <div key={v} className="calendar__legend-swatch" style={{ background: getHeatColor(v) }} />
           ))}
         </div>
         <span className="calendar__legend-label">More</span>
@@ -713,7 +731,7 @@ function CalendarView({ entries }: { entries: MissingTimelineEntry[] }) {
                     key={i}
                     className={`calendar__mini-cell${cell.day === 0 ? ' calendar__mini-cell--empty' : ''}${cell.count > 0 ? ' calendar__mini-cell--has' : ''}${cell.key === selectedDay ? ' calendar__mini-cell--selected' : ''}`}
                     onClick={() => cell.day > 0 && cell.count > 0 && setSelectedDay(cell.key === selectedDay ? null : cell.key)}
-                    style={cell.count > 0 ? { '--intensity': cell.count / globalMaxDay } as React.CSSProperties : undefined}
+                    style={cell.count > 0 ? { '--heat-color': getHeatColor(cell.count / globalMaxDay) } as React.CSSProperties : undefined}
                     title={cell.count > 0 ? `${cell.count} missing` : undefined}
                   >
                     {cell.day > 0 ? cell.day : ''}
