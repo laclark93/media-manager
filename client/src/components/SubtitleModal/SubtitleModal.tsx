@@ -260,7 +260,7 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
           })
         )
       );
-      setDismissedFileIds(new Set(episodes.map(ep => ep.fileId)));
+      setDismissedFileIds(new Set((item.affectedEpisodes ?? []).map(ep => ep.fileId)));
       setMarkAllState('done');
     } catch {
       setMarkAllState('error');
