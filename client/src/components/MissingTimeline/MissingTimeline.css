@@ -1,0 +1,483 @@
+/* ── View switcher ───────────────────────────────────────── */
+.timeline-views {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.timeline-views__btn {
+  padding: 7px 16px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 400;
+  transition: background 0.15s, color 0.15s;
+}
+
+.timeline-views__btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.timeline-views__btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.timeline-views__btn:not(:first-child) {
+  border-left: none;
+}
+
+.timeline-views__btn--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Summary stats ──────────────────────────────────────── */
+.timeline__summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.timeline__stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 18px;
+  text-align: center;
+}
+
+.timeline__stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+}
+
+.timeline__stat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Monthly Histogram (View A) ─────────────────────────── */
+.timeline__chart {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.timeline__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+
+.timeline__row:hover {
+  background: rgba(52, 152, 219, 0.06);
+}
+
+.timeline__month-label {
+  min-width: 75px;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.timeline__bar-track {
+  flex: 1;
+  height: 20px;
+  position: relative;
+}
+
+.timeline__bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  min-width: 2px;
+  transition: opacity 0.15s;
+}
+
+.timeline__bar:hover {
+  opacity: 0.8;
+}
+
+.timeline__bar-count {
+  min-width: 32px;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.timeline__year-sep {
+  padding: 10px 0 4px 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.timeline__detail {
+  margin: 2px 0 6px 83px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.timeline__detail-show {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  color: var(--text-secondary);
+}
+
+.timeline__detail-show-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline__detail-show-count {
+  color: var(--text-muted);
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+/* ── Season Grid (View B) ──────────────────────────────── */
+.season-grid {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.season-grid__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(51, 51, 80, 0.15);
+}
+
+.season-grid__row:last-child {
+  border-bottom: none;
+}
+
+.season-grid__title {
+  min-width: 180px;
+  max-width: 180px;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.season-grid__cells {
+  display: flex;
+  gap: 3px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.season-grid__cell {
+  width: 28px;
+  height: 22px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.season-grid__cell--none {
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.season-grid__cell--low {
+  background: var(--warning);
+}
+
+.season-grid__cell--mid {
+  background: var(--very-stale);
+}
+
+.season-grid__cell--high {
+  background: var(--danger);
+}
+
+.season-grid__header {
+  display: flex;
+  gap: 3px;
+  margin-left: 186px;
+  margin-bottom: 4px;
+}
+
+.season-grid__header-cell {
+  width: 28px;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Cumulative SVG chart (View C) ──────────────────────── */
+.cumulative {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.cumulative__svg {
+  width: 100%;
+  height: 300px;
+}
+
+.cumulative__area {
+  fill: rgba(52, 152, 219, 0.15);
+}
+
+.cumulative__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.cumulative__axis-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.cumulative__grid-line {
+  stroke: var(--border);
+  stroke-width: 0.5;
+}
+
+.cumulative__tooltip {
+  position: absolute;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* ── Year Cards (View D) ────────────────────────────────── */
+.year-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.year-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.year-card__year {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.year-card__count {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.year-card__bar-track {
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.year-card__bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+.year-card__shows {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.year-card__show-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 1px 0;
+}
+
+.year-card__show-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.year-card__show-count {
+  margin-left: 8px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+/* ── Show Timeline (View E) ─────────────────────────────── */
+.show-timeline {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.show-timeline__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.show-timeline__title {
+  min-width: 180px;
+  max-width: 180px;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.show-timeline__bar-area {
+  flex: 1;
+  height: 16px;
+  position: relative;
+  background: var(--bg-primary);
+  border-radius: 3px;
+}
+
+.show-timeline__range {
+  position: absolute;
+  height: 100%;
+  background: rgba(52, 152, 219, 0.2);
+  border-radius: 3px;
+}
+
+.show-timeline__dot {
+  position: absolute;
+  width: 4px;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+.show-timeline__count {
+  min-width: 32px;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.show-timeline__year-markers {
+  display: flex;
+  margin-left: 188px;
+  position: relative;
+  height: 16px;
+  margin-bottom: 4px;
+}
+
+.show-timeline__year-label {
+  position: absolute;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  transform: translateX(-50%);
+}
+
+/* ── Loading / empty ────────────────────────────────────── */
+.timeline__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  color: var(--text-secondary);
+}
+
+/* ── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .timeline__summary {
+    gap: 8px;
+  }
+
+  .timeline__stat {
+    padding: 8px 12px;
+    flex: 1;
+    min-width: 90px;
+  }
+
+  .timeline__month-label {
+    min-width: 55px;
+    font-size: 0.7rem;
+  }
+
+  .timeline__detail {
+    margin-left: 63px;
+  }
+
+  .season-grid__title,
+  .show-timeline__title {
+    min-width: 120px;
+    max-width: 120px;
+  }
+
+  .season-grid__header {
+    margin-left: 126px;
+  }
+
+  .show-timeline__year-markers {
+    margin-left: 128px;
+  }
+
+  .timeline-views__btn {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
+
+  .year-cards {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}

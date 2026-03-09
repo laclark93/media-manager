@@ -8,6 +8,9 @@ import { getSonarrPosterUrl, getSonarrRemotePoster } from '../utils/images';
 import { MediaCard } from '../components/MediaCard/MediaCard';
 import { Toolbar } from '../components/Toolbar/Toolbar';
 import { EpisodeModal } from '../components/EpisodeModal/EpisodeModal';
+import { MissingTimeline } from '../components/MissingTimeline/MissingTimeline';
+
+type ShowsTab = 'cards' | 'timeline';
 
 interface ShowItem {
   id: number;
@@ -23,10 +26,11 @@ interface ShowItem {
 }
 
 export function Shows() {
-  const { series, loading, error, searchSeries, searchEpisodes, getMissingEpisodes, refresh } = useSonarr();
+  const { series, loading, error, searchSeries, searchEpisodes, getMissingEpisodes, getMissingTimeline, refresh } = useSonarr();
   const { settings } = useSettings();
   const { addEntry, updateEntry } = useActivityLog();
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<ShowsTab>('cards');
 
   const thresholds = settings?.stalenessThresholds;
   const sonarrUrl = settings?.sonarrUrl || '';
@@ -57,58 +61,90 @@ export function Shows() {
   return (
     <div className="page">
       {error && <div className="error-banner">{error}</div>}
-      <Toolbar
-        sortBy={sortBy}
-        sortDir={sortDir}
-        stalenessFilter={stalenessFilter}
-        onSortChange={setSortBy}
-        onSortDirChange={setSortDir}
-        onFilterChange={setStalenessFilter}
-        totalCount={totalCount}
-        filteredCount={filteredCount}
-        onRefresh={refresh}
-        onSearchAll={async () => {
-          const eid = addEntry('Search All Shows', `${filtered.length} shows`);
-          try {
-            await Promise.all(filtered.map(s => searchSeries(s.id)));
-            updateEntry(eid, 'success', `${filtered.length} show(s) queued`);
-          } catch { updateEntry(eid, 'error', 'Failed'); }
-        }}
-        searchAllLabel={`Search All (${filteredCount})`}
-      />
-      {filtered.length === 0 ? (
-        <div className="empty-state">
-          <h2>No Missing Shows</h2>
-          <p>All monitored episodes have been downloaded.</p>
-        </div>
-      ) : (
-        <div className="media-grid">
-          {filtered.map(item => (
-            <MediaCard
-              key={item.id}
-              id={item.id}
-              title={item.title}
-              year={item.year}
-              posterUrl={item.posterUrl}
-              remotePosterUrl={item.remotePosterUrl}
-              dateAdded={item.dateAdded}
-              showDateAdded={sortBy === 'dateAdded'}
-              stalenessLevel={getStaleness(item.dateAdded, thresholds, item.lastAired)}
-              type="show"
-              episodeFileCount={item.episodeFileCount}
-              episodeCount={item.episodeCount}
-              sonarrUrl={sonarrUrl}
-              sonarrSeriesSlug={item.titleSlug}
-              onCardClick={() => setSelectedSeriesId(item.id)}
-              onSearchAll={async () => {
-                const eid = addEntry('Search All', item.title);
-                try { await searchSeries(item.id); updateEntry(eid, 'success', 'Queued'); }
-                catch { updateEntry(eid, 'error', 'Failed'); }
-              }}
-            />
-          ))}
-        </div>
+
+      <div style={{ display: 'flex', gap: 0, marginBottom: 12 }}>
+        {(['cards', 'timeline'] as ShowsTab[]).map((tab, i, arr) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '8px 20px',
+              background: activeTab === tab ? 'var(--accent)' : 'var(--bg-card)',
+              color: activeTab === tab ? '#fff' : 'var(--text-secondary)',
+              border: '1px solid var(--border)',
+              borderLeft: i > 0 ? 'none' : undefined,
+              borderRadius: i === 0 ? '6px 0 0 6px' : i === arr.length - 1 ? '0 6px 6px 0' : '0',
+              cursor: 'pointer',
+              fontWeight: activeTab === tab ? 600 : 400,
+              fontSize: '0.85rem',
+            }}
+          >
+            {tab === 'cards' ? 'Cards' : 'Timeline'}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'cards' && (
+        <>
+          <Toolbar
+            sortBy={sortBy}
+            sortDir={sortDir}
+            stalenessFilter={stalenessFilter}
+            onSortChange={setSortBy}
+            onSortDirChange={setSortDir}
+            onFilterChange={setStalenessFilter}
+            totalCount={totalCount}
+            filteredCount={filteredCount}
+            onRefresh={refresh}
+            onSearchAll={async () => {
+              const eid = addEntry('Search All Shows', `${filtered.length} shows`);
+              try {
+                await Promise.all(filtered.map(s => searchSeries(s.id)));
+                updateEntry(eid, 'success', `${filtered.length} show(s) queued`);
+              } catch { updateEntry(eid, 'error', 'Failed'); }
+            }}
+            searchAllLabel={`Search All (${filteredCount})`}
+          />
+          {filtered.length === 0 ? (
+            <div className="empty-state">
+              <h2>No Missing Shows</h2>
+              <p>All monitored episodes have been downloaded.</p>
+            </div>
+          ) : (
+            <div className="media-grid">
+              {filtered.map(item => (
+                <MediaCard
+                  key={item.id}
+                  id={item.id}
+                  title={item.title}
+                  year={item.year}
+                  posterUrl={item.posterUrl}
+                  remotePosterUrl={item.remotePosterUrl}
+                  dateAdded={item.dateAdded}
+                  showDateAdded={sortBy === 'dateAdded'}
+                  stalenessLevel={getStaleness(item.dateAdded, thresholds, item.lastAired)}
+                  type="show"
+                  episodeFileCount={item.episodeFileCount}
+                  episodeCount={item.episodeCount}
+                  sonarrUrl={sonarrUrl}
+                  sonarrSeriesSlug={item.titleSlug}
+                  onCardClick={() => setSelectedSeriesId(item.id)}
+                  onSearchAll={async () => {
+                    const eid = addEntry('Search All', item.title);
+                    try { await searchSeries(item.id); updateEntry(eid, 'success', 'Queued'); }
+                    catch { updateEntry(eid, 'error', 'Failed'); }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
+
+      {activeTab === 'timeline' && (
+        <MissingTimeline getMissingTimeline={getMissingTimeline} />
+      )}
+
       {selectedSeriesId !== null && selectedSeries && (
         <EpisodeModal
           seriesTitle={selectedSeries.title}

@@ -499,6 +499,22 @@ router.post('/mark-episode-failed', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/missing-timeline', async (_req: Request, res: Response) => {
+  try {
+    const config = getConfig();
+    if (!config.sonarrUrl || !config.sonarrApiKey) {
+      res.status(400).json({ error: 'Sonarr not configured' });
+      return;
+    }
+    const episodes = await sonarrService.getWantedMissingDetailed(config.sonarrUrl, config.sonarrApiKey);
+    console.log(`[INFO] Sonarr missing-timeline: ${episodes.length} missing episodes`);
+    res.json(episodes);
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
 router.get('/early', async (_req: Request, res: Response) => {
   try {
     const config = getConfig();

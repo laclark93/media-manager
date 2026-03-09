@@ -42,3 +42,12 @@ export interface SonarrEpisode {
   hasFile: boolean;
   monitored: boolean;
 }
+
+export interface MissingTimelineEntry {
+  seriesId: number;
+  seriesTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string;
+  airDateUtc: string;
+}

@@ -86,6 +86,27 @@ export async function getWantedMissing(baseUrl: string, apiKey: string): Promise
   return (resp.data.records || []).map((r: any) => ({ seriesId: r.seriesId, airDateUtc: r.airDateUtc }));
 }
 
+export async function getWantedMissingDetailed(baseUrl: string, apiKey: string): Promise<{
+  seriesId: number;
+  seriesTitle: string;
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string;
+  airDateUtc: string;
+}[]> {
+  const resp = await client(baseUrl, apiKey).get('/api/v3/wanted/missing', {
+    params: { pageSize: 10000, sortKey: 'airDateUtc', sortDirection: 'descending', includeSeries: true },
+  });
+  return (resp.data.records || []).map((r: any) => ({
+    seriesId: r.seriesId,
+    seriesTitle: r.series?.title ?? '',
+    seasonNumber: r.seasonNumber,
+    episodeNumber: r.episodeNumber,
+    title: r.title ?? '',
+    airDateUtc: r.airDateUtc,
+  }));
+}
+
 export async function proxyImage(baseUrl: string, apiKey: string, imagePath: string) {
   const resp = await client(baseUrl, apiKey).get(`/${imagePath}`, {
     responseType: 'stream',

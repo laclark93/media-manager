@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '../utils/api';
 import { createCache, REFRESH_INTERVAL } from '../utils/cache';
-import { SonarrSeries, SonarrEpisode } from '../types/sonarr';
+import { SonarrSeries, SonarrEpisode, MissingTimelineEntry } from '../types/sonarr';
 
 const cache = createCache<SonarrSeries[]>();
 
@@ -54,5 +54,9 @@ export function useSonarr() {
     return fetchApi<SonarrEpisode[]>(`/api/sonarr/episodes?seriesId=${seriesId}`);
   }, []);
 
-  return { series, loading, error, refresh, searchSeries, searchEpisodes, getMissingEpisodes };
+  const getMissingTimeline = useCallback(async (): Promise<MissingTimelineEntry[]> => {
+    return fetchApi<MissingTimelineEntry[]>('/api/sonarr/missing-timeline');
+  }, []);
+
+  return { series, loading, error, refresh, searchSeries, searchEpisodes, getMissingEpisodes, getMissingTimeline };
 }
