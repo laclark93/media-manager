@@ -361,6 +361,10 @@
   overflow-x: auto;
 }
 
+.show-timeline__inner {
+  min-width: 100%;
+}
+
 .show-timeline__row {
   display: flex;
   align-items: center;
@@ -369,14 +373,19 @@
 }
 
 .show-timeline__title {
-  min-width: 180px;
-  max-width: 180px;
+  min-width: 150px;
+  max-width: 150px;
   font-size: 0.78rem;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  background: var(--bg-card);
+  z-index: 1;
+  padding-right: 4px;
 }
 
 .show-timeline__bar-area {
@@ -412,7 +421,7 @@
 
 .show-timeline__year-markers {
   display: flex;
-  margin-left: 188px;
+  margin-left: 158px;
   position: relative;
   height: 16px;
   margin-bottom: 4px;

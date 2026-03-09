@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { MissingTimelineEntry } from '../../types/sonarr';
 import './MissingTimeline.css';
 
@@ -403,6 +403,8 @@ interface ShowRange {
 }
 
 function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const { shows, globalMin, globalMax } = useMemo(() => {
     const map = new Map<number, ShowRange>();
     let gMin = Infinity, gMax = -Infinity;
@@ -425,11 +427,15 @@ function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
     return { shows: arr, globalMin: gMin, globalMax: gMax };
   }, [entries]);
 
+  const startYear = new Date(globalMin).getFullYear();
+  const endYear = new Date(globalMax).getFullYear();
+  const yearSpan = endYear - startYear + 1;
+  // 120px per year, minimum 600px
+  const timelineWidth = Math.max(yearSpan * 120, 600);
+
   const range = globalMax - globalMin || 1;
   const toPct = (t: number) => ((t - globalMin) / range) * 100;
 
-  const startYear = new Date(globalMin).getFullYear();
-  const endYear = new Date(globalMax).getFullYear();
   const yearMarkers: { pct: number; label: string }[] = [];
   for (let y = startYear; y <= endYear; y++) {
     const t = new Date(y, 0, 1).getTime();
@@ -438,38 +444,47 @@ function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
     }
   }
 
+  // Scroll to the right (latest years) on mount
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [shows]);
+
   return (
-    <div className="show-timeline">
-      <div className="show-timeline__year-markers" style={{ flex: 1, position: 'relative', height: 16 }}>
-        {yearMarkers.map(m => (
-          <span key={m.label} className="show-timeline__year-label" style={{ left: `${m.pct}%` }}>
-            {m.label}
-          </span>
+    <div className="show-timeline" ref={scrollRef}>
+      <div className="show-timeline__inner" style={{ minWidth: timelineWidth }}>
+        <div className="show-timeline__year-markers">
+          {yearMarkers.map(m => (
+            <span key={m.label} className="show-timeline__year-label" style={{ left: `${m.pct}%` }}>
+              {m.label}
+            </span>
+          ))}
+        </div>
+        {shows.map(show => (
+          <div key={show.title} className="show-timeline__row">
+            <span className="show-timeline__title" title={show.title}>{show.title}</span>
+            <div className="show-timeline__bar-area">
+              <div
+                className="show-timeline__range"
+                style={{
+                  left: `${toPct(show.minTime)}%`,
+                  width: `${Math.max(toPct(show.maxTime) - toPct(show.minTime), 0.5)}%`,
+                }}
+              />
+              {show.dates.map((t, i) => (
+                <div
+                  key={i}
+                  className="show-timeline__dot"
+                  style={{ left: `${toPct(t)}%` }}
+                  title={new Date(t).toLocaleDateString()}
+                />
+              ))}
+            </div>
+            <span className="show-timeline__count">{show.count}</span>
+          </div>
         ))}
       </div>
-      {shows.map(show => (
-        <div key={show.title} className="show-timeline__row">
-          <span className="show-timeline__title" title={show.title}>{show.title}</span>
-          <div className="show-timeline__bar-area">
-            <div
-              className="show-timeline__range"
-              style={{
-                left: `${toPct(show.minTime)}%`,
-                width: `${Math.max(toPct(show.maxTime) - toPct(show.minTime), 0.5)}%`,
-              }}
-            />
-            {show.dates.map((t, i) => (
-              <div
-                key={i}
-                className="show-timeline__dot"
-                style={{ left: `${toPct(t)}%` }}
-                title={new Date(t).toLocaleDateString()}
-              />
-            ))}
-          </div>
-          <span className="show-timeline__count">{show.count}</span>
-        </div>
-      ))}
     </div>
   );
 }

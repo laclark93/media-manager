@@ -71,12 +71,13 @@ export function Shows() {
               padding: '8px 20px',
               background: activeTab === tab ? 'var(--accent)' : 'var(--bg-card)',
               color: activeTab === tab ? '#fff' : 'var(--text-secondary)',
-              border: '1px solid var(--border)',
+              border: activeTab === tab ? '1px solid var(--accent)' : '1px solid var(--border)',
               borderLeft: i > 0 ? 'none' : undefined,
               borderRadius: i === 0 ? '6px 0 0 6px' : i === arr.length - 1 ? '0 6px 6px 0' : '0',
               cursor: 'pointer',
               fontWeight: activeTab === tab ? 600 : 400,
               fontSize: '0.85rem',
+              outline: 'none',
             }}
           >
             {tab === 'cards' ? 'Cards' : 'Timeline'}
