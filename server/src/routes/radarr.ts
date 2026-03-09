@@ -68,7 +68,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
       radarrService.getMovies(config.radarrUrl, config.radarrApiKey),
       radarrService.getTags(config.radarrUrl, config.radarrApiKey),
     ]);
-    const animeTagId = tags.find(t => t.label.toLowerCase() === 'anime')?.id;
+    const animeTagId = tags.find(t => t.label.toLowerCase() === config.radarrAnimeTag.toLowerCase())?.id;
     const mismatches = allMovies
       .filter(m => m.monitored)
       .map(m => {
@@ -113,7 +113,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       radarrService.getMovies(config.radarrUrl, config.radarrApiKey),
       radarrService.getTags(config.radarrUrl, config.radarrApiKey),
     ]);
-    const animeTagId = tags.find(t => t.label.toLowerCase() === 'anime')?.id;
+    const animeTagId = tags.find(t => t.label.toLowerCase() === config.radarrAnimeTag.toLowerCase())?.id;
 
     // Anime movies that have a file
     const animeMovies = allMovies.filter(m => {

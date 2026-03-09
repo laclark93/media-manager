@@ -5,8 +5,10 @@ import { StalenessThresholds, DEFAULT_THRESHOLDS } from '../types/common';
 export interface SettingsData {
   sonarrUrl: string;
   sonarrApiKeySet: boolean;
+  sonarrAnimeTag: string;
   radarrUrl: string;
   radarrApiKeySet: boolean;
+  radarrAnimeTag: string;
   jellyseerrUrl: string;
   jellyseerrApiKeySet: boolean;
   stalenessThresholds: StalenessThresholds;
@@ -20,8 +22,10 @@ export interface SettingsData {
 export interface SettingsSavePayload {
   sonarrUrl?: string;
   sonarrApiKey?: string;
+  sonarrAnimeTag?: string;
   radarrUrl?: string;
   radarrApiKey?: string;
+  radarrAnimeTag?: string;
   jellyseerrUrl?: string;
   jellyseerrApiKey?: string;
   plexToken?: string;

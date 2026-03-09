@@ -14,8 +14,10 @@ router.get('/', (_req, res) => {
   res.json({
     sonarrUrl: config.sonarrUrl,
     sonarrApiKeySet: !!config.sonarrApiKey,
+    sonarrAnimeTag: config.sonarrAnimeTag,
     radarrUrl: config.radarrUrl,
     radarrApiKeySet: !!config.radarrApiKey,
+    radarrAnimeTag: config.radarrAnimeTag,
     jellyseerrUrl: config.jellyseerrUrl,
     jellyseerrApiKeySet: !!config.jellyseerrApiKey,
     stalenessThresholds: config.stalenessThresholds,
@@ -28,15 +30,17 @@ router.get('/', (_req, res) => {
 });
 
 router.put('/', (req, res) => {
-  const { sonarrUrl, sonarrApiKey, radarrUrl, radarrApiKey, jellyseerrUrl, jellyseerrApiKey, plexToken, stalenessThresholds } = req.body as Settings;
+  const { sonarrUrl, sonarrApiKey, sonarrAnimeTag, radarrUrl, radarrApiKey, radarrAnimeTag, jellyseerrUrl, jellyseerrApiKey, plexToken, stalenessThresholds } = req.body as Settings;
   const current = readSettings();
   const updated: Settings = {
     ...current,
     sonarrUrl: sonarrUrl ?? current.sonarrUrl,
     // Only update API keys when a non-empty value is provided; empty means "keep existing"
     sonarrApiKey: sonarrApiKey || current.sonarrApiKey,
+    sonarrAnimeTag: sonarrAnimeTag ?? current.sonarrAnimeTag,
     radarrUrl: radarrUrl ?? current.radarrUrl,
     radarrApiKey: radarrApiKey || current.radarrApiKey,
+    radarrAnimeTag: radarrAnimeTag ?? current.radarrAnimeTag,
     jellyseerrUrl: jellyseerrUrl ?? current.jellyseerrUrl,
     jellyseerrApiKey: jellyseerrApiKey || current.jellyseerrApiKey,
     plexToken: plexToken || current.plexToken,

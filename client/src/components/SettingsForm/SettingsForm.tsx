@@ -23,10 +23,12 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
   const [sonarrUrl, setSonarrUrl] = useState('');
   const [sonarrApiKey, setSonarrApiKey] = useState('');
   const [sonarrApiKeyLocked, setSonarrApiKeyLocked] = useState(false);
+  const [sonarrAnimeTag, setSonarrAnimeTag] = useState('anime');
 
   const [radarrUrl, setRadarrUrl] = useState('');
   const [radarrApiKey, setRadarrApiKey] = useState('');
   const [radarrApiKeyLocked, setRadarrApiKeyLocked] = useState(false);
+  const [radarrAnimeTag, setRadarrAnimeTag] = useState('anime');
 
   const [jellyseerrUrl, setJellyseerrUrl] = useState('');
   const [jellyseerrApiKey, setJellyseerrApiKey] = useState('');
@@ -63,9 +65,11 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     setSonarrUrl(initialSettings.sonarrUrl || '');
     setSonarrApiKeyLocked(initialSettings.sonarrApiKeySet);
     setSonarrApiKey('');
+    setSonarrAnimeTag(initialSettings.sonarrAnimeTag || 'anime');
     setRadarrUrl(initialSettings.radarrUrl || '');
     setRadarrApiKeyLocked(initialSettings.radarrApiKeySet);
     setRadarrApiKey('');
+    setRadarrAnimeTag(initialSettings.radarrAnimeTag || 'anime');
     setJellyseerrUrl(initialSettings.jellyseerrUrl || '');
     setJellyseerrApiKeyLocked(initialSettings.jellyseerrApiKeySet);
     setJellyseerrApiKey('');
@@ -153,7 +157,9 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     setSaved(false);
     const payload: SettingsSavePayload = {
       sonarrUrl,
+      sonarrAnimeTag,
       radarrUrl,
+      radarrAnimeTag,
       jellyseerrUrl,
       stalenessThresholds: { staleDays, veryStaledays, ancientDays },
     };
@@ -240,6 +246,16 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
               onChange={(e) => setSonarrApiKey(e.target.value)}
             />
           </div>
+          <div className="settings-form__field">
+            <label>Anime Tag</label>
+            <input
+              type="text"
+              value={sonarrAnimeTag}
+              onChange={(e) => setSonarrAnimeTag(e.target.value)}
+              placeholder="anime"
+            />
+            <span className="settings-form__hint" style={{ marginTop: 4 }}>Tag label used to identify anime series</span>
+          </div>
           <button className="settings-form__test-btn" onClick={handleTestSonarr} disabled={sonarrTest === 'testing'}>
             {sonarrTest === 'testing' ? 'Testing...' : 'Test Connection'}
           </button>
@@ -271,6 +287,16 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
               onBlur={() => { if (!radarrApiKey && initialSettings.radarrApiKeySet) setRadarrApiKeyLocked(true); }}
               onChange={(e) => setRadarrApiKey(e.target.value)}
             />
+          </div>
+          <div className="settings-form__field">
+            <label>Anime Tag</label>
+            <input
+              type="text"
+              value={radarrAnimeTag}
+              onChange={(e) => setRadarrAnimeTag(e.target.value)}
+              placeholder="anime"
+            />
+            <span className="settings-form__hint" style={{ marginTop: 4 }}>Tag label used to identify anime movies</span>
           </div>
           <button className="settings-form__test-btn" onClick={handleTestRadarr} disabled={radarrTest === 'testing'}>
             {radarrTest === 'testing' ? 'Testing...' : 'Test Connection'}

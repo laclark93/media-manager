@@ -118,7 +118,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
       sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey),
       sonarrService.getTags(config.sonarrUrl, config.sonarrApiKey),
     ]);
-    const animeTagId = tags.find(t => t.label.toLowerCase() === 'anime')?.id;
+    const animeTagId = tags.find(t => t.label.toLowerCase() === config.sonarrAnimeTag.toLowerCase())?.id;
     const mismatches = allSeries
       .filter(s => s.monitored && s.statistics)
       .map(s => {
@@ -160,7 +160,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
       sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey),
       sonarrService.getTags(config.sonarrUrl, config.sonarrApiKey),
     ]);
-    const animeTagId = tags.find(t => t.label.toLowerCase() === 'anime')?.id;
+    const animeTagId = tags.find(t => t.label.toLowerCase() === config.sonarrAnimeTag.toLowerCase())?.id;
 
     const animeSeries = allSeries.filter(s => {
       const isAnimeSeries = s.seriesType === 'anime';

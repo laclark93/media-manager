@@ -12,8 +12,10 @@ export function getConfig(): AppConfig {
   return {
     sonarrUrl: settings.sonarrUrl || process.env.SONARR_URL || '',
     sonarrApiKey: settings.sonarrApiKey || process.env.SONARR_API_KEY || '',
+    sonarrAnimeTag: settings.sonarrAnimeTag || 'anime',
     radarrUrl: settings.radarrUrl || process.env.RADARR_URL || '',
     radarrApiKey: settings.radarrApiKey || process.env.RADARR_API_KEY || '',
+    radarrAnimeTag: settings.radarrAnimeTag || 'anime',
     jellyseerrUrl: settings.jellyseerrUrl || process.env.JELLYSEERR_URL || '',
     jellyseerrApiKey: settings.jellyseerrApiKey || process.env.JELLYSEERR_API_KEY || '',
     plexToken: settings.plexToken || process.env.PLEX_TOKEN || '',

@@ -1,8 +1,10 @@
 export interface Settings {
   sonarrUrl?: string;
   sonarrApiKey?: string;
+  sonarrAnimeTag?: string;
   radarrUrl?: string;
   radarrApiKey?: string;
+  radarrAnimeTag?: string;
   jellyseerrUrl?: string;
   jellyseerrApiKey?: string;
   plexToken?: string;
@@ -21,8 +23,10 @@ export interface StalenessThresholds {
 export interface AppConfig {
   sonarrUrl: string;
   sonarrApiKey: string;
+  sonarrAnimeTag: string;
   radarrUrl: string;
   radarrApiKey: string;
+  radarrAnimeTag: string;
   jellyseerrUrl: string;
   jellyseerrApiKey: string;
   plexToken: string;
