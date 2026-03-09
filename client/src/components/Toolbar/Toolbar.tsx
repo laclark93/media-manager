@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { StalenessLevel, SortOption } from '../../types/common';
 import './Toolbar.css';
 
@@ -31,6 +31,9 @@ interface ToolbarProps {
   sortOptions?: SortOptionDef[];
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
+  missingRange?: [number, number] | null;
+  onMissingRangeChange?: (range: [number, number] | null) => void;
+  maxMissing?: number;
 }
 
 const STALENESS_OPTIONS: { value: StalenessLevel | 'all'; label: string }[] = [
@@ -57,8 +60,28 @@ export function Toolbar({
   sortOptions = DEFAULT_SORT_OPTIONS,
   searchQuery,
   onSearchQueryChange,
+  missingRange,
+  onMissingRangeChange,
+  maxMissing = 0,
 }: ToolbarProps) {
   const [searchState, setSearchState] = useState<'idle' | 'searching' | 'queued'>('idle');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [filterOpen]);
+
+  const hasActiveRange = missingRange !== null;
+  const rangeMin = missingRange ? missingRange[0] : 0;
+  const rangeMax = missingRange ? missingRange[1] : maxMissing;
 
   const handleSearchAll = async () => {
     if (!onSearchAll || searchState !== 'idle') return;
@@ -115,6 +138,59 @@ export function Toolbar({
             {opt.label}
           </button>
         ))}
+        {onMissingRangeChange && maxMissing > 0 && (
+          <div className="toolbar__filter-wrapper" ref={filterRef}>
+            <button
+              className={`toolbar__chip${hasActiveRange ? ' toolbar__chip--active' : ''}`}
+              onClick={() => setFilterOpen(o => !o)}
+            >
+              {hasActiveRange ? `${rangeMin}–${rangeMax} Missing` : 'Missing #'}
+            </button>
+            {filterOpen && (
+              <div className="toolbar__filter-popout">
+                <div className="toolbar__filter-header">
+                  <span>Missing Episodes</span>
+                  {hasActiveRange && (
+                    <button
+                      className="toolbar__filter-clear"
+                      onClick={() => { onMissingRangeChange(null); setFilterOpen(false); }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="toolbar__range-labels">
+                  <span>{rangeMin}</span>
+                  <span>{rangeMax}</span>
+                </div>
+                <div className="toolbar__range-track">
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxMissing}
+                    value={rangeMin}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      onMissingRangeChange([Math.min(v, rangeMax), rangeMax]);
+                    }}
+                    className="toolbar__range-input toolbar__range-input--min"
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxMissing}
+                    value={rangeMax}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      onMissingRangeChange([rangeMin, Math.max(v, rangeMin)]);
+                    }}
+                    className="toolbar__range-input toolbar__range-input--max"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <span className="toolbar__count">
           {filteredCount === totalCount ? totalCount : `${filteredCount} / ${totalCount}`}
         </span>

@@ -27,6 +27,7 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
   });
   const [stalenessFilter, setStalenessFilter] = useState<StalenessLevel | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [missingRange, setMissingRange] = useState<[number, number] | null>(null);
 
   const setSortBy = (v: SortOption) => {
     _setSortBy(v);
@@ -47,6 +48,14 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
 
     if (stalenessFilter !== 'all') {
       result = result.filter(item => getStaleness(item.dateAdded, thresholds, item.lastAired) === stalenessFilter);
+    }
+
+    if (missingRange) {
+      const [min, max] = missingRange;
+      result = result.filter(item => {
+        const missing = (item.episodeCount || 0) - (item.episodeFileCount || 0);
+        return missing >= min && missing <= max;
+      });
     }
 
     result.sort((a, b) => {
@@ -85,7 +94,16 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
     });
 
     return result;
-  }, [items, sortBy, sortDir, stalenessFilter, searchQuery, thresholds]);
+  }, [items, sortBy, sortDir, stalenessFilter, searchQuery, missingRange, thresholds]);
+
+  const maxMissing = useMemo(() => {
+    let max = 0;
+    for (const item of items) {
+      const missing = (item.episodeCount || 0) - (item.episodeFileCount || 0);
+      if (missing > max) max = missing;
+    }
+    return max;
+  }, [items]);
 
   return {
     filtered,
@@ -93,6 +111,8 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
     sortDir, setSortDir,
     stalenessFilter, setStalenessFilter,
     searchQuery, setSearchQuery,
+    missingRange, setMissingRange,
+    maxMissing,
     totalCount: items.length,
     filteredCount: filtered.length,
   };
