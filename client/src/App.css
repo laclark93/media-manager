@@ -44,12 +44,15 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .page {
   flex: 1;
   padding: 20px;
   width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .error-banner {
