@@ -358,34 +358,55 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
-  overflow-x: auto;
+  display: flex;
+  gap: 0;
+  overflow: hidden;
 }
 
-.show-timeline__inner {
-  min-width: 100%;
+.show-timeline__fixed {
+  flex-shrink: 0;
+  width: 160px;
+  z-index: 2;
 }
 
-.show-timeline__row {
+.show-timeline__year-spacer {
+  height: 16px;
+  margin-bottom: 4px;
+}
+
+.show-timeline__title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   padding: 3px 0;
+  height: 22px;
 }
 
 .show-timeline__title {
-  min-width: 150px;
-  max-width: 150px;
+  flex: 1;
+  min-width: 0;
   font-size: 0.78rem;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex-shrink: 0;
-  position: sticky;
-  left: 0;
-  background: var(--bg-card);
-  z-index: 1;
-  padding-right: 4px;
+}
+
+.show-timeline__scroll {
+  flex: 1;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.show-timeline__scroll-inner {
+  min-width: 100%;
+}
+
+.show-timeline__bar-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+  height: 22px;
 }
 
 .show-timeline__bar-area {
@@ -412,16 +433,14 @@
 }
 
 .show-timeline__count {
-  min-width: 32px;
+  min-width: 28px;
   text-align: right;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .show-timeline__year-markers {
-  display: flex;
-  margin-left: 158px;
   position: relative;
   height: 16px;
   margin-bottom: 4px;
@@ -495,32 +514,32 @@
 
 .calendar__year-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
 }
 
 .calendar__mini-month {
   background: var(--bg-primary);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: 4px;
+  padding: 4px 5px;
 }
 
 .calendar__mini-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .calendar__mini-month-name {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .calendar__mini-month-count {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 700;
   color: var(--accent);
 }
@@ -528,24 +547,24 @@
 .calendar__mini-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
+  gap: 0;
 }
 
 .calendar__mini-day-header {
   text-align: center;
-  font-size: 0.55rem;
+  font-size: 0.48rem;
   font-weight: 600;
   color: var(--text-muted);
-  padding: 2px 0;
+  padding: 1px 0;
 }
 
 .calendar__mini-cell {
   aspect-ratio: 1;
-  border-radius: 2px;
+  border-radius: 1px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.55rem;
+  font-size: 0.48rem;
   color: var(--text-secondary);
   cursor: default;
   transition: background 0.15s, box-shadow 0.15s;
@@ -658,18 +677,17 @@
     max-width: 100px;
   }
 
-  .season-grid__title,
-  .show-timeline__title {
+  .season-grid__title {
     min-width: 120px;
     max-width: 120px;
   }
 
-  .season-grid__header {
-    margin-left: 126px;
+  .show-timeline__fixed {
+    width: 120px;
   }
 
-  .show-timeline__year-markers {
-    margin-left: 128px;
+  .season-grid__header {
+    margin-left: 126px;
   }
 
   .timeline-views__btn {
@@ -678,7 +696,7 @@
   }
 
   .calendar__year-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
   }
 }

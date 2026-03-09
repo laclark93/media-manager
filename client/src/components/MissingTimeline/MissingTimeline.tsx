@@ -430,7 +430,6 @@ function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
   const startYear = new Date(globalMin).getFullYear();
   const endYear = new Date(globalMax).getFullYear();
   const yearSpan = endYear - startYear + 1;
-  // 120px per year, minimum 600px
   const timelineWidth = Math.max(yearSpan * 120, 600);
 
   const range = globalMax - globalMin || 1;
@@ -452,38 +451,47 @@ function ShowTimeline({ entries }: { entries: MissingTimelineEntry[] }) {
   }, [shows]);
 
   return (
-    <div className="show-timeline" ref={scrollRef}>
-      <div className="show-timeline__inner" style={{ minWidth: timelineWidth }}>
-        <div className="show-timeline__year-markers">
-          {yearMarkers.map(m => (
-            <span key={m.label} className="show-timeline__year-label" style={{ left: `${m.pct}%` }}>
-              {m.label}
-            </span>
-          ))}
-        </div>
+    <div className="show-timeline">
+      <div className="show-timeline__fixed">
+        <div className="show-timeline__year-spacer" />
         {shows.map(show => (
-          <div key={show.title} className="show-timeline__row">
+          <div key={show.title} className="show-timeline__title-row">
             <span className="show-timeline__title" title={show.title}>{show.title}</span>
-            <div className="show-timeline__bar-area">
-              <div
-                className="show-timeline__range"
-                style={{
-                  left: `${toPct(show.minTime)}%`,
-                  width: `${Math.max(toPct(show.maxTime) - toPct(show.minTime), 0.5)}%`,
-                }}
-              />
-              {show.dates.map((t, i) => (
-                <div
-                  key={i}
-                  className="show-timeline__dot"
-                  style={{ left: `${toPct(t)}%` }}
-                  title={new Date(t).toLocaleDateString()}
-                />
-              ))}
-            </div>
             <span className="show-timeline__count">{show.count}</span>
           </div>
         ))}
+      </div>
+      <div className="show-timeline__scroll" ref={scrollRef}>
+        <div className="show-timeline__scroll-inner" style={{ minWidth: timelineWidth }}>
+          <div className="show-timeline__year-markers">
+            {yearMarkers.map(m => (
+              <span key={m.label} className="show-timeline__year-label" style={{ left: `${m.pct}%` }}>
+                {m.label}
+              </span>
+            ))}
+          </div>
+          {shows.map(show => (
+            <div key={show.title} className="show-timeline__bar-row">
+              <div className="show-timeline__bar-area">
+                <div
+                  className="show-timeline__range"
+                  style={{
+                    left: `${toPct(show.minTime)}%`,
+                    width: `${Math.max(toPct(show.maxTime) - toPct(show.minTime), 0.5)}%`,
+                  }}
+                />
+                {show.dates.map((t, i) => (
+                  <div
+                    key={i}
+                    className="show-timeline__dot"
+                    style={{ left: `${toPct(t)}%` }}
+                    title={new Date(t).toLocaleDateString()}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
