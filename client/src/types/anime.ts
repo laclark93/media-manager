@@ -12,6 +12,7 @@ export interface AnimeMismatch {
   slug?: string;
   posterUrl?: string;
   remotePosterUrl?: string;
+  hasMissing?: boolean;
 }
 
 export interface AffectedEpisode {

@@ -268,13 +268,18 @@ export function Anime() {
   const sonarrUrl = settings?.sonarrUrl || '';
   const radarrUrl = settings?.radarrUrl || '';
 
-  const notTagged = items.filter(i => i.mismatchType === 'anime-not-tagged');
-  const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime');
-  const visibleWronglyTagged = allWronglyTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}`));
-  const ignoredWronglyTagged = allWronglyTagged.filter(i => ignoredKeys.has(`${i.service}-${i.id}`));
-
   const visibleSubItems = subItems.filter(i => !ignoredSubKeys.has(`${i.service}-${i.id}`));
   const ignoredSubItems = subItems.filter(i => ignoredSubKeys.has(`${i.service}-${i.id}`));
+
+  // Build set of series/movie IDs that have subtitle issues
+  const subItemKeys = new Set(subItems.map(i => `${i.service}-${i.id}`));
+
+  // "anime-not-tagged": only show if has missing episodes/files
+  const notTagged = items.filter(i => i.mismatchType === 'anime-not-tagged' && i.hasMissing);
+  // "tagged-not-anime": show if has missing episodes/files OR has subtitle issues
+  const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime' && (i.hasMissing || subItemKeys.has(`${i.service}-${i.id}`)));
+  const visibleWronglyTagged = allWronglyTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}`));
+  const ignoredWronglyTagged = allWronglyTagged.filter(i => ignoredKeys.has(`${i.service}-${i.id}`));
 
   if (loading) return <div className="page"><div className="loading">Checking anime tags...</div></div>;
 

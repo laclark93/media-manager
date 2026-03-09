@@ -120,7 +120,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
     ]);
     const animeTagId = tags.find(t => t.label.toLowerCase() === 'anime')?.id;
     const mismatches = allSeries
-      .filter(s => s.monitored && s.statistics && s.statistics.episodeCount > s.statistics.episodeFileCount)
+      .filter(s => s.monitored && s.statistics)
       .map(s => {
         const isAnimeSeries = s.seriesType === 'anime';
         const hasAnimeTag = animeTagId !== undefined && s.tags.includes(animeTagId);
@@ -137,6 +137,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
           slug: s.titleSlug,
           posterUrl: poster ? `/api/sonarr/image${poster.url}` : undefined,
           remotePosterUrl: poster?.remoteUrl,
+          hasMissing: s.statistics.episodeCount > s.statistics.episodeFileCount,
         };
       })
       .filter(Boolean);

@@ -70,7 +70,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
     ]);
     const animeTagId = tags.find(t => t.label.toLowerCase() === 'anime')?.id;
     const mismatches = allMovies
-      .filter(m => m.monitored && !m.hasFile)
+      .filter(m => m.monitored)
       .map(m => {
         // Anime signal: Animation genre + Japanese original language
         const isAnimeMovie =
@@ -90,6 +90,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
           slug: m.titleSlug,
           posterUrl: poster ? `/api/radarr/image${poster.url}` : undefined,
           remotePosterUrl: poster?.remoteUrl,
+          hasMissing: !m.hasFile,
         };
       })
       .filter(Boolean);
