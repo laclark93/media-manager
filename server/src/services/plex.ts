@@ -160,11 +160,10 @@ export async function findShowByFilePath(
   // Browse each TV section and match by Location
   for (const section of tvSections) {
     const allResp = await client(server.uri, token).get(`/library/sections/${section.key}/all`, {
-      params: { type: 2, includeGuids: 0, includeLocations: 1 },
+      params: { type: 2, includeGuids: 0 },
     });
     const shows = allResp.data.MediaContainer?.Metadata || [];
-    const showsWithLoc = shows.filter((s: any) => s.Location?.length > 0).length;
-    console.log(`[TRACE] plex findShowByFilePath: section "${section.title}" has ${shows.length} shows (${showsWithLoc} with Location data)`);
+    console.log(`[TRACE] plex findShowByFilePath: section "${section.title}" has ${shows.length} shows`);
 
     for (const show of shows) {
       // Try Location paths first
@@ -234,7 +233,7 @@ export async function findMovieByFilePath(
 
   for (const section of movieSections) {
     const allResp = await client(server.uri, token).get(`/library/sections/${section.key}/all`, {
-      params: { type: 1, includeLocations: 1 },
+      params: { type: 1 },
     });
     const movies = allResp.data.MediaContainer?.Metadata || [];
 
