@@ -133,8 +133,11 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
   };
   const [showIgnored, setShowIgnored] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SubtitleMissing | null>(null);
+  const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
 
-  const sorted = [...items].sort((a, b) => {
+  const visibleItems = items.filter(i => !completedKeys.has(`${i.service}-${i.id}`));
+
+  const sorted = [...visibleItems].sort((a, b) => {
     let cmp: number;
     if (sortBy === 'missing') cmp = b.affectedFiles - a.affectedFiles;
     else if (sortBy === 'year') cmp = (b.year ?? 0) - (a.year ?? 0);
@@ -147,11 +150,11 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
       <div className="anime-page__section-header">
         <div className="anime-page__section-toggle" onClick={() => setOpen(o => !o)}>
           <span className="anime-page__section-title">Anime missing English subtitles</span>
-          {!loading && <span className="anime-page__count">{items.length}</span>}
+          {!loading && <span className="anime-page__count">{visibleItems.length}</span>}
           {loading && <span className="anime-page__count anime-page__count--loading">…</span>}
           <span className="anime-page__chevron">{open ? '▾' : '▸'}</span>
         </div>
-        {!loading && items.length > 1 && (
+        {!loading && visibleItems.length > 1 && (
           <div className="anime-page__sort-bar">
             {(['missing', 'title', 'year'] as SubtitleSort[]).map(opt => (
               <button
@@ -189,7 +192,7 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
           {error && <div className="error-banner" style={{ margin: '0 0 12px' }}>{error}</div>}
           {loading ? (
             <div className="loading">Scanning subtitle tracks...</div>
-          ) : items.length === 0 ? (
+          ) : visibleItems.length === 0 ? (
             <p className="anime-page__section-desc" style={{ color: 'var(--success)' }}>
               No issues found — all downloaded anime have English subtitles (or unnamed tracks).
             </p>
@@ -248,6 +251,7 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
           radarrUrl={radarrUrl}
           plexConfigured={plexConfigured}
           onClose={() => setSelectedItem(null)}
+          onAllMarkedFailed={() => setCompletedKeys(prev => new Set([...prev, `${selectedItem.service}-${selectedItem.id}`]))}
         />
       )}
     </section>

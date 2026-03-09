@@ -19,6 +19,7 @@ interface SubtitleModalProps {
   radarrUrl?: string;
   plexConfigured?: boolean;
   onClose: () => void;
+  onAllMarkedFailed?: () => void;
 }
 
 function PlexSubtitleBadge({ streams }: Readonly<{ streams: SubtitleStream[] | undefined }>) {
@@ -158,7 +159,7 @@ function MovieFileRow({
   );
 }
 
-export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onClose }: SubtitleModalProps) {
+export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onClose, onAllMarkedFailed }: SubtitleModalProps) {
   const [dismissedFileIds, setDismissedFileIds] = useState<Set<number>>(new Set());
   const [markAllState, setMarkAllState] = useState<ActionState>('idle');
   const [plexEpisodeUrls, setPlexEpisodeUrls] = useState<Record<string, string>>({});
@@ -237,10 +238,11 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
   // Auto-close when all items have been marked as failed
   useEffect(() => {
     if (dismissedFileIds.size > 0 && episodes.length === 0 && movieFileIds.length === 0) {
+      onAllMarkedFailed?.();
       const t = setTimeout(onClose, 1000);
       return () => clearTimeout(t);
     }
-  }, [dismissedFileIds.size, episodes.length, movieFileIds.length, onClose]);
+  }, [dismissedFileIds.size, episodes.length, movieFileIds.length, onClose, onAllMarkedFailed]);
 
   const handleFileDone = (fileId: number) => {
     setDismissedFileIds(prev => new Set([...prev, fileId]));
