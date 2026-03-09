@@ -68,7 +68,9 @@ export function Movies() {
         onSearchAll={async () => {
           const eid = addEntry('Search All Movies', `${filtered.length} movies`);
           try {
-            await Promise.all(filtered.map(m => searchMovie(m.id)));
+            for (const m of filtered) {
+              await searchMovie(m.id);
+            }
             updateEntry(eid, 'success', `${filtered.length} movie(s) queued`);
           } catch { updateEntry(eid, 'error', 'Failed'); }
         }}
