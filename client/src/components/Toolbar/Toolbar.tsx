@@ -70,7 +70,7 @@ export function Toolbar({
 
   useEffect(() => {
     if (!filterOpen) return;
-    const handler = (e: MouseEvent) => {
+    const handler = (e: Event) => {
       if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
         setFilterOpen(false);
       }
