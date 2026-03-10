@@ -53,7 +53,7 @@ export function Shows() {
     [series]
   );
 
-  const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, searchQuery, setSearchQuery, missingRange, setMissingRange, maxMissing, totalCount, filteredCount } =
+  const { filtered, sortBy, setSortBy, sortDir, setSortDir, stalenessFilter, setStalenessFilter, searchQuery, setSearchQuery, missingRange, setMissingRange, lastAiredRange, setLastAiredRange, maxMissing, totalCount, filteredCount } =
     useFilter(items, thresholds, 'shows');
 
   const selectedSeries = series.find(s => s.id === selectedSeriesId);
@@ -115,6 +115,8 @@ export function Shows() {
             missingRange={missingRange}
             onMissingRangeChange={setMissingRange}
             maxMissing={maxMissing}
+            lastAiredRange={lastAiredRange}
+            onLastAiredRangeChange={setLastAiredRange}
           />
           {filtered.length === 0 ? (
             <div className="empty-state">

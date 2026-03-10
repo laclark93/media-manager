@@ -305,6 +305,33 @@
   padding-bottom: 4px;
 }
 
+.toolbar__filter-clear-all {
+  text-align: right;
+  margin-bottom: 10px;
+}
+
+.toolbar__date-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.toolbar__date-input {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  width: 100%;
+  color-scheme: dark;
+}
+
+.toolbar__date-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .toolbar__range-track {
   position: relative;
   height: 28px;

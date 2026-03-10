@@ -34,6 +34,8 @@ interface ToolbarProps {
   missingRange?: [number, number] | null;
   onMissingRangeChange?: (range: [number, number] | null) => void;
   maxMissing?: number;
+  lastAiredRange?: [string, string] | null;
+  onLastAiredRangeChange?: (range: [string, string] | null) => void;
 }
 
 const STALENESS_OPTIONS: { value: StalenessLevel | 'all'; label: string }[] = [
@@ -63,6 +65,8 @@ export function Toolbar({
   missingRange,
   onMissingRangeChange,
   maxMissing = 0,
+  lastAiredRange,
+  onLastAiredRangeChange,
 }: ToolbarProps) {
   const [searchState, setSearchState] = useState<'idle' | 'searching' | 'queued'>('idle');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -86,7 +90,15 @@ export function Toolbar({
   const hasActiveRange = missingRange !== null;
   const rangeMin = missingRange ? missingRange[0] : 0;
   const rangeMax = missingRange ? missingRange[1] : maxMissing;
-  const hasAnyFilter = stalenessFilter !== 'all' || hasActiveRange;
+  const hasActiveDateRange = lastAiredRange !== null;
+  const hasAnyFilter = stalenessFilter !== 'all' || hasActiveRange || hasActiveDateRange;
+  const today = new Date().toISOString().slice(0, 10);
+
+  const handleClearAll = () => {
+    onFilterChange('all');
+    if (onMissingRangeChange) onMissingRangeChange(null);
+    if (onLastAiredRangeChange) onLastAiredRangeChange(null);
+  };
 
   const handleSearchAll = async () => {
     if (!onSearchAll || searchState !== 'idle') return;
@@ -147,6 +159,11 @@ export function Toolbar({
           </button>
           {filterOpen && (
             <div className="toolbar__filter-popout">
+              {hasAnyFilter && (
+                <div className="toolbar__filter-clear-all">
+                  <button className="toolbar__filter-clear" onClick={handleClearAll}>Clear All Filters</button>
+                </div>
+              )}
               <div className="toolbar__filter-section">
                 <div className="toolbar__filter-section-label">Staleness</div>
                 <div className="toolbar__filter-chips">
@@ -228,6 +245,53 @@ export function Toolbar({
                       }}
                       className="toolbar__range-input toolbar__range-input--max"
                     />
+                  </div>
+                </div>
+              )}
+              {onLastAiredRangeChange && (
+                <div className="toolbar__filter-section">
+                  <div className="toolbar__filter-section-header">
+                    <span className="toolbar__filter-section-label">Last Aired</span>
+                    {hasActiveDateRange && (
+                      <button
+                        className="toolbar__filter-clear"
+                        onClick={() => onLastAiredRangeChange(null)}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="toolbar__date-inputs">
+                    <label className="toolbar__range-field">
+                      <span>From</span>
+                      <input
+                        type="date"
+                        max={lastAiredRange?.[1] || today}
+                        value={lastAiredRange?.[0] ?? ''}
+                        onChange={(e) => {
+                          const from = e.target.value;
+                          const to = lastAiredRange?.[1] ?? '';
+                          onLastAiredRangeChange(from || to ? [from, to] : null);
+                        }}
+                        className="toolbar__date-input"
+                      />
+                    </label>
+                    <span className="toolbar__range-dash">–</span>
+                    <label className="toolbar__range-field">
+                      <span>To</span>
+                      <input
+                        type="date"
+                        min={lastAiredRange?.[0] || ''}
+                        max={today}
+                        value={lastAiredRange?.[1] ?? ''}
+                        onChange={(e) => {
+                          const to = e.target.value;
+                          const from = lastAiredRange?.[0] ?? '';
+                          onLastAiredRangeChange(from || to ? [from, to] : null);
+                        }}
+                        className="toolbar__date-input"
+                      />
+                    </label>
                   </div>
                 </div>
               )}
