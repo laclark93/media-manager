@@ -247,14 +247,16 @@
 .toolbar__filter-clear {
   background: none;
   border: none;
-  color: var(--accent);
+  color: #e53935;
   cursor: pointer;
   font-size: 0.75rem;
-  padding: 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
 }
 
 .toolbar__filter-clear:hover {
-  text-decoration: underline;
+  background: rgba(229, 57, 53, 0.12);
 }
 
 .toolbar__range-inputs {

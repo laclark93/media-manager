@@ -165,7 +165,17 @@ export function Toolbar({
                 </div>
               )}
               <div className="toolbar__filter-section">
-                <div className="toolbar__filter-section-label">Staleness</div>
+                <div className="toolbar__filter-section-header">
+                  <span className="toolbar__filter-section-label">Staleness</span>
+                  {stalenessFilter !== 'all' && (
+                    <button
+                      className="toolbar__filter-clear"
+                      onClick={() => onFilterChange('all')}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
                 <div className="toolbar__filter-chips">
                   {STALENESS_OPTIONS.map((opt) => (
                     <button
