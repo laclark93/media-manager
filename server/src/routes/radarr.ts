@@ -238,7 +238,7 @@ router.post('/mark-failed', async (req: Request, res: Response) => {
         log.warn(` No grab history found for movie ${movieId} — skipping blocklist`);
       }
     } catch (err) {
-      log.warn(` Could not blocklist movie ${movieId}:`, err instanceof Error ? err.message : err);
+      log.warn(` Could not blocklist movie ${movieId}: ${err instanceof Error ? err.message : err}`);
     }
 
     // 2. Delete the movie file
@@ -286,7 +286,7 @@ router.post('/mark-movie-failed', async (req: Request, res: Response) => {
         await radarrService.markHistoryFailed(config.radarrUrl, config.radarrApiKey, grabRecord.id);
         log.info(` Marked history ${grabRecord.id} as failed for movie ${movieId}`);
       } catch (err) {
-        log.warn(` Could not blocklist movie ${movieId}:`, err instanceof Error ? err.message : err);
+        log.warn(` Could not blocklist movie ${movieId}: ${err instanceof Error ? err.message : err}`);
       }
     }
 

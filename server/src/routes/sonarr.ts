@@ -414,7 +414,7 @@ router.post('/mark-failed', async (req: Request, res: Response) => {
           log.warn(` No grab history found for episode ${episodeId} — skipping blocklist`);
         }
       } catch (err) {
-        log.warn(` Could not blocklist episode ${episodeId}:`, err instanceof Error ? err.message : err);
+        log.warn(` Could not blocklist episode ${episodeId}: ${err instanceof Error ? err.message : err}`);
       }
     }
 
@@ -480,7 +480,7 @@ router.post('/mark-episode-failed', async (req: Request, res: Response) => {
           blocklisted++;
           log.info(` Marked history ${grabRecord.id} as failed for episode ${ep.id}`);
         } catch (err) {
-          log.warn(` Could not blocklist episode ${ep.id}:`, err instanceof Error ? err.message : err);
+          log.warn(` Could not blocklist episode ${ep.id}: ${err instanceof Error ? err.message : err}`);
         }
       }
 
@@ -490,7 +490,7 @@ router.post('/mark-episode-failed', async (req: Request, res: Response) => {
         deleted++;
         log.info(` Deleted episode file ${ep.episodeFileId}`);
       } catch (err) {
-        log.warn(` Could not delete episode file ${ep.episodeFileId}:`, err instanceof Error ? err.message : err);
+        log.warn(` Could not delete episode file ${ep.episodeFileId}: ${err instanceof Error ? err.message : err}`);
       }
     }
 
