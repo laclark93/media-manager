@@ -76,7 +76,11 @@ export function Toolbar({
       }
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
   }, [filterOpen]);
 
   const hasActiveRange = missingRange !== null;
