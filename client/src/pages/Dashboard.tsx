@@ -5,19 +5,8 @@ import { useJellyseerr } from '../hooks/useJellyseerr';
 import { useSubtitleCheck } from '../hooks/useSubtitleCheck';
 import { useSettings } from '../hooks/useSettings';
 import { StalenessLevel, DEFAULT_THRESHOLDS } from '../types/common';
+import { getStaleness } from '../utils/staleness';
 import './Dashboard.css';
-
-function getStaleness(addedStr: string, thresholds: { staleDays: number; veryStaledays: number; ancientDays: number }, releaseStr?: string): StalenessLevel {
-  const now = Date.now();
-  const added = new Date(addedStr).getTime();
-  const release = releaseStr ? new Date(releaseStr).getTime() : null;
-  const baseline = release && release > added ? release : added;
-  const days = (now - baseline) / (1000 * 60 * 60 * 24);
-  if (days >= thresholds.ancientDays) return StalenessLevel.Ancient;
-  if (days >= thresholds.veryStaledays) return StalenessLevel.VeryStale;
-  if (days >= thresholds.staleDays) return StalenessLevel.Stale;
-  return StalenessLevel.Fresh;
-}
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -40,10 +29,11 @@ export function Dashboard() {
   // Movies missing files
   const missingMovies = movies.filter(m => !m.hasFile && m.isAvailable);
 
-  // Staleness breakdown for shows
+  // Staleness breakdown for shows (uses same logic as Shows page: latestMissingAirDate || previousAiring)
   const showStaleness = { fresh: 0, stale: 0, veryStale: 0, ancient: 0 };
   for (const s of showsWithMissing) {
-    const level = getStaleness(s.dateAdded, thresholds);
+    const lastAired = s.latestMissingAirDate || s.previousAiring;
+    const level = getStaleness(s.dateAdded, thresholds, lastAired);
     if (level === StalenessLevel.Fresh) showStaleness.fresh++;
     else if (level === StalenessLevel.Stale) showStaleness.stale++;
     else if (level === StalenessLevel.VeryStale) showStaleness.veryStale++;
