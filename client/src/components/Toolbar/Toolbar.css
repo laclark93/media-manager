@@ -330,6 +330,11 @@
   color-scheme: dark;
 }
 
+.toolbar__date-input--placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
 .toolbar__date-input:focus {
   outline: none;
   border-color: var(--accent);

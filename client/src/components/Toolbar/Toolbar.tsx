@@ -299,7 +299,7 @@ export function Toolbar({
                           const from = lastAiredRange?.[0] ?? '';
                           onLastAiredRangeChange(from || to ? [from, to] : null);
                         }}
-                        className="toolbar__date-input"
+                        className={`toolbar__date-input${!lastAiredRange ? ' toolbar__date-input--placeholder' : ''}`}
                       />
                     </label>
                   </div>
