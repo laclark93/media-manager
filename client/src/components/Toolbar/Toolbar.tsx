@@ -280,7 +280,7 @@ export function Toolbar({
                         value={lastAiredRange?.[0] ?? ''}
                         onChange={(e) => {
                           const from = e.target.value;
-                          const to = lastAiredRange?.[1] ?? '';
+                          const to = lastAiredRange?.[1] ?? today;
                           onLastAiredRangeChange(from || to ? [from, to] : null);
                         }}
                         className="toolbar__date-input"
@@ -293,7 +293,7 @@ export function Toolbar({
                         type="date"
                         min={lastAiredRange?.[0] || ''}
                         max={today}
-                        value={lastAiredRange?.[1] ?? ''}
+                        value={lastAiredRange?.[1] ?? today}
                         onChange={(e) => {
                           const to = e.target.value;
                           const from = lastAiredRange?.[0] ?? '';
