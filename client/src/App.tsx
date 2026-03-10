@@ -7,6 +7,7 @@ import { Anime } from './pages/Anime';
 import { Settings } from './pages/Settings';
 import { Log } from './pages/Log';
 import { Early } from './pages/Early';
+import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { Setup } from './pages/Setup';
 import { ActivityLogContext, useActivityLogState } from './hooks/useActivityLog';
@@ -23,6 +24,7 @@ function ProtectedApp() {
         <Header />
         <div className="app-content">
           <Routes>
+            <Route path="/" element={<Dashboard />} />
             <Route path="/shows" element={<Shows />} />
             <Route path="/movies" element={<Movies />} />
             <Route path="/issues" element={<Issues />} />
@@ -30,7 +32,6 @@ function ProtectedApp() {
             <Route path="/early" element={<Early />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/log" element={<Log />} />
-            <Route path="/" element={<Navigate to="/shows" replace />} />
           </Routes>
         </div>
       </SearchQueueContext.Provider>
@@ -49,10 +50,10 @@ function AppRouter() {
     <AuthContext.Provider value={auth}>
       <Routes>
         <Route path="/setup" element={
-          auth.configured ? <Navigate to="/shows" replace /> : <Setup />
+          auth.configured ? <Navigate to="/" replace /> : <Setup />
         } />
         <Route path="/login" element={
-          (auth.configured && auth.token) ? <Navigate to="/shows" replace /> : <Login />
+          (auth.configured && auth.token) ? <Navigate to="/" replace /> : <Login />
         } />
         <Route path="/*" element={
           !auth.configured

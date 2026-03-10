@@ -7,6 +7,14 @@ export function Header() {
       <div className="sidebar__brand">Missing Media</div>
       <nav className="sidebar__nav">
         <NavLink
+          to="/"
+          end
+          className={({ isActive }) => `sidebar__link${isActive ? ' sidebar__link--active' : ''}`}
+        >
+          <span className="sidebar__icon">🏠</span>
+          <span className="sidebar__label">Dashboard</span>
+        </NavLink>
+        <NavLink
           to="/shows"
           className={({ isActive }) => `sidebar__link${isActive ? ' sidebar__link--active' : ''}`}
         >
