@@ -69,6 +69,7 @@ services:
 | `PLEX_TOKEN` | No | Plex authentication token (enables subtitle detail view) |
 | `PORT` | No | Port to listen on (default: `3000`) |
 | `DATA_DIR` | No | Directory for persistent data (default: `/config`) |
+| `VERBOSE_LOGGING` | No | Enable verbose/trace log output (default: `true`, set to `false` to disable) |
 
 ### Persistent data
 
