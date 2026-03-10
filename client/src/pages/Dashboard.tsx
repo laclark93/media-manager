@@ -4,6 +4,7 @@ import { useRadarr } from '../hooks/useRadarr';
 import { useJellyseerr } from '../hooks/useJellyseerr';
 import { useSubtitleCheck } from '../hooks/useSubtitleCheck';
 import { useSettings } from '../hooks/useSettings';
+import { useIgnoredSubtitles } from '../hooks/useIgnoredSubtitles';
 import { StalenessLevel, DEFAULT_THRESHOLDS } from '../types/common';
 import { getStaleness } from '../utils/staleness';
 import './Dashboard.css';
@@ -15,6 +16,9 @@ export function Dashboard() {
   const { issues, loading: issuesLoading } = useJellyseerr();
   const { items: subtitleItems, loading: subsLoading } = useSubtitleCheck();
   const { settings } = useSettings();
+  const { ignoredKeys: ignoredSubKeys } = useIgnoredSubtitles();
+
+  const visibleSubtitleItems = subtitleItems.filter(i => !ignoredSubKeys.has(`${i.service}-${i.id}`));
 
   const thresholds = settings?.stalenessThresholds ?? DEFAULT_THRESHOLDS;
 
@@ -118,13 +122,13 @@ export function Dashboard() {
           </span>
         </div>
 
-        <div className={cardClass(subtitleItems.length, subsLoading)} onClick={() => navigate('/anime')}>
+        <div className={cardClass(visibleSubtitleItems.length, subsLoading)} onClick={() => navigate('/anime')}>
           <div className="dashboard__card-header">
             <span className="dashboard__card-label">Subtitle Issues</span>
             <span className="dashboard__card-icon">💬</span>
           </div>
           <span className="dashboard__card-value">
-            {subsLoading ? '—' : subtitleItems.length}
+            {subsLoading ? '—' : visibleSubtitleItems.length}
           </span>
           <span className="dashboard__card-sub">
             {subsLoading ? 'Loading...' : 'Missing English subs'}
