@@ -18,10 +18,10 @@ export const DEFAULT_SORT_OPTIONS: SortOptionDef[] = [
 interface ToolbarProps {
   sortBy: SortOption;
   sortDir: 'asc' | 'desc';
-  stalenessFilter: StalenessLevel | 'all';
+  stalenessFilter: Set<StalenessLevel>;
   onSortChange: (sortBy: SortOption) => void;
   onSortDirChange: (dir: 'asc' | 'desc') => void;
-  onFilterChange: (filter: StalenessLevel | 'all') => void;
+  onFilterChange: (filter: Set<StalenessLevel>) => void;
   totalCount: number;
   filteredCount: number;
   onRefresh?: () => void;
@@ -91,11 +91,11 @@ export function Toolbar({
   const rangeMin = missingRange ? missingRange[0] : 0;
   const rangeMax = missingRange ? missingRange[1] : maxMissing;
   const hasActiveDateRange = lastAiredRange !== null;
-  const hasAnyFilter = stalenessFilter !== 'all' || hasActiveRange || hasActiveDateRange;
+  const hasAnyFilter = stalenessFilter.size > 0 || hasActiveRange || hasActiveDateRange;
   const today = new Date().toISOString().slice(0, 10);
 
   const handleClearAll = () => {
-    onFilterChange('all');
+    onFilterChange(new Set());
     if (onMissingRangeChange) onMissingRangeChange(null);
     if (onLastAiredRangeChange) onLastAiredRangeChange(null);
   };
@@ -167,25 +167,42 @@ export function Toolbar({
               <div className="toolbar__filter-section">
                 <div className="toolbar__filter-section-header">
                   <span className="toolbar__filter-section-label">Staleness</span>
-                  {stalenessFilter !== 'all' && (
+                  {stalenessFilter.size > 0 && (
                     <button
                       className="toolbar__filter-clear"
-                      onClick={() => onFilterChange('all')}
+                      onClick={() => onFilterChange(new Set())}
                     >
                       Clear
                     </button>
                   )}
                 </div>
                 <div className="toolbar__filter-chips">
-                  {STALENESS_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      className={`toolbar__chip${stalenessFilter === opt.value ? ' toolbar__chip--active' : ''}`}
-                      onClick={() => onFilterChange(opt.value)}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  {STALENESS_OPTIONS.map((opt) => {
+                    const isAll = opt.value === 'all';
+                    const isActive = isAll ? stalenessFilter.size === 0 : stalenessFilter.has(opt.value as StalenessLevel);
+                    return (
+                      <button
+                        key={opt.value}
+                        className={`toolbar__chip${isActive ? ' toolbar__chip--active' : ''}`}
+                        onClick={() => {
+                          if (isAll) {
+                            onFilterChange(new Set());
+                          } else {
+                            const level = opt.value as StalenessLevel;
+                            const next = new Set(stalenessFilter);
+                            if (next.has(level)) {
+                              next.delete(level);
+                            } else {
+                              next.add(level);
+                            }
+                            onFilterChange(next);
+                          }
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               {onMissingRangeChange && maxMissing > 0 && (

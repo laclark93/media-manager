@@ -25,7 +25,7 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
     }
     return 'asc';
   });
-  const [stalenessFilter, setStalenessFilter] = useState<StalenessLevel | 'all'>('all');
+  const [stalenessFilter, setStalenessFilter] = useState<Set<StalenessLevel>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [missingRange, setMissingRange] = useState<[number, number] | null>(null);
   const [lastAiredRange, setLastAiredRange] = useState<[string, string] | null>(null);
@@ -47,8 +47,8 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
       result = result.filter(item => item.title.toLowerCase().includes(q));
     }
 
-    if (stalenessFilter !== 'all') {
-      result = result.filter(item => getStaleness(item.dateAdded, thresholds, item.lastAired) === stalenessFilter);
+    if (stalenessFilter.size > 0) {
+      result = result.filter(item => stalenessFilter.has(getStaleness(item.dateAdded, thresholds, item.lastAired)));
     }
 
     if (missingRange) {
