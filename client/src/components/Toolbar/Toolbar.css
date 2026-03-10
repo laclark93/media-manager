@@ -359,6 +359,10 @@
   border-radius: 2px;
 }
 
+.toolbar__range-input--min {
+  z-index: 1;
+}
+
 .toolbar__range-input--min::-webkit-slider-runnable-track {
   background: transparent;
 }
