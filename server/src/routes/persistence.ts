@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { readIgnored, writeIgnoredMismatches, writeIgnoredSubtitles, readLog, writeLog, SerializedLogEntry } from '../persistence.js';
+import * as log from '../logger.js';
 
 const router = Router();
 
@@ -19,8 +20,8 @@ router.put('/ignored/mismatches', (req, res) => {
   const after = new Set(keys);
   const added = [...after].filter(k => !before.has(k));
   const removed = [...before].filter(k => !after.has(k));
-  if (added.length) console.log(`[INFO] Ignored anime mismatch: ${added.join(', ')}`);
-  if (removed.length) console.log(`[INFO] Restored anime mismatch: ${removed.join(', ')}`);
+  if (added.length) log.info(`Ignored anime mismatch: ${added.join(', ')}`);
+  if (removed.length) log.info(`Restored anime mismatch: ${removed.join(', ')}`);
   writeIgnoredMismatches(keys);
   res.json({ success: true });
 });
@@ -35,8 +36,8 @@ router.put('/ignored/subtitles', (req, res) => {
   const after = new Set(keys);
   const added = [...after].filter(k => !before.has(k));
   const removed = [...before].filter(k => !after.has(k));
-  if (added.length) console.log(`[INFO] Ignored subtitle item: ${added.join(', ')}`);
-  if (removed.length) console.log(`[INFO] Restored subtitle item: ${removed.join(', ')}`);
+  if (added.length) log.info(`Ignored subtitle item: ${added.join(', ')}`);
+  if (removed.length) log.info(`Restored subtitle item: ${removed.join(', ')}`);
   writeIgnoredSubtitles(keys);
   res.json({ success: true });
 });

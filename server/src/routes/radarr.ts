@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import { getConfig } from '../config.js';
+import * as log from '../logger.js';
 import * as radarrService from '../services/radarr.js';
 import * as plexService from '../services/plex.js';
 
@@ -30,6 +31,7 @@ function hasEnglishSubs(subtitles: string | undefined): boolean {
 
 router.get('/movies', async (_req: Request, res: Response) => {
   try {
+    log.verbose('Radarr route: fetching missing movies');
     const config = getConfig();
     if (!config.radarrUrl || !config.radarrApiKey) {
       res.status(400).json({ error: 'Radarr not configured' });
@@ -37,7 +39,7 @@ router.get('/movies', async (_req: Request, res: Response) => {
     }
     const allMovies = await radarrService.getMovies(config.radarrUrl, config.radarrApiKey);
     const missingMovies = allMovies.filter((m) => m.monitored && !m.hasFile && m.isAvailable);
-    console.log(`[INFO] Radarr movies: ${missingMovies.length} missing (of ${allMovies.length} total)`);
+    log.info(` Radarr movies: ${missingMovies.length} missing (of ${allMovies.length} total)`);
     res.json(missingMovies);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -49,6 +51,7 @@ router.post('/search', async (req: Request, res: Response) => {
   try {
     const config = getConfig();
     const { movieId } = req.body;
+    log.verbose(`Radarr route: search request for movieId=${movieId}`);
     const result = await radarrService.searchMovie(config.radarrUrl, config.radarrApiKey, [movieId]);
     res.json(result);
   } catch (err) {
@@ -59,6 +62,7 @@ router.post('/search', async (req: Request, res: Response) => {
 
 router.get('/anime-check', async (_req: Request, res: Response) => {
   try {
+    log.verbose('Radarr route: anime-check starting');
     const config = getConfig();
     if (!config.radarrUrl || !config.radarrApiKey) {
       res.status(400).json({ error: 'Radarr not configured' });
@@ -94,7 +98,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
         };
       })
       .filter(Boolean);
-    console.log(`[INFO] Radarr anime-check: ${mismatches.length} mismatch(es) found`);
+    log.info(` Radarr anime-check: ${mismatches.length} mismatch(es) found`);
     res.json(mismatches);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -104,6 +108,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
 
 router.get('/subtitle-check', async (_req: Request, res: Response) => {
   try {
+    log.verbose('Radarr route: subtitle-check starting');
     const config = getConfig();
     if (!config.radarrUrl || !config.radarrApiKey) {
       res.status(400).json({ error: 'Radarr not configured' });
@@ -169,7 +174,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
 
             let match: { ratingKey: string; title: string; year: number } | undefined;
             if (results.length === 0 && item.filePaths?.length > 0) {
-              console.log(`[TRACE] plex title search failed for "${item.title}", trying file-path fallback`);
+              log.trace(` plex title search failed for "${item.title}", trying file-path fallback`);
               const pathMatch = await plexService.findMovieByFilePath(config.plexToken, item.filePaths);
               if (pathMatch) match = pathMatch;
             } else if (results.length > 0) {
@@ -185,7 +190,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               return code === 'en' || code === 'eng' || lang === 'english';
             });
             if (hasEngSub) {
-              console.log(`[INFO] Radarr subtitle-check: Plex confirmed English subs for "${item.title}" — removing false positive`);
+              log.info(` Radarr subtitle-check: Plex confirmed English subs for "${item.title}" — removing false positive`);
               return null;
             }
             return item;
@@ -199,7 +204,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         .filter((item): item is any => item != null);
     }
 
-    console.log(`[INFO] Radarr subtitle-check: ${missing.length} movie(s) with missing English subs (of ${animeMovies.length} anime movies checked)`);
+    log.info(` Radarr subtitle-check: ${missing.length} movie(s) with missing English subs (of ${animeMovies.length} anime movies checked)`);
     res.json(missing);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -228,21 +233,21 @@ router.post('/mark-failed', async (req: Request, res: Response) => {
         .sort((a, b) => b.id - a.id)[0];
       if (grabRecord) {
         await radarrService.markHistoryFailed(config.radarrUrl, config.radarrApiKey, grabRecord.id);
-        console.log(`[INFO] Marked history ${grabRecord.id} as failed for movie ${movieId}`);
+        log.info(` Marked history ${grabRecord.id} as failed for movie ${movieId}`);
       } else {
-        console.log(`[WARN] No grab history found for movie ${movieId} — skipping blocklist`);
+        log.warn(` No grab history found for movie ${movieId} — skipping blocklist`);
       }
     } catch (err) {
-      console.log(`[WARN] Could not blocklist movie ${movieId}:`, err instanceof Error ? err.message : err);
+      log.warn(` Could not blocklist movie ${movieId}:`, err instanceof Error ? err.message : err);
     }
 
     // 2. Delete the movie file
     await radarrService.deleteMovieFile(config.radarrUrl, config.radarrApiKey, movieFileId);
-    console.log(`[INFO] Deleted movie file ${movieFileId}`);
+    log.info(` Deleted movie file ${movieFileId}`);
 
     // 3. Search for a replacement
     await radarrService.searchMovie(config.radarrUrl, config.radarrApiKey, [movieId]);
-    console.log(`[INFO] Triggered MoviesSearch for movie ${movieId}`);
+    log.info(` Triggered MoviesSearch for movie ${movieId}`);
 
     res.json({ success: true });
   } catch (err) {
@@ -279,21 +284,21 @@ router.post('/mark-movie-failed', async (req: Request, res: Response) => {
     if (grabRecord) {
       try {
         await radarrService.markHistoryFailed(config.radarrUrl, config.radarrApiKey, grabRecord.id);
-        console.log(`[INFO] Marked history ${grabRecord.id} as failed for movie ${movieId}`);
+        log.info(` Marked history ${grabRecord.id} as failed for movie ${movieId}`);
       } catch (err) {
-        console.log(`[WARN] Could not blocklist movie ${movieId}:`, err instanceof Error ? err.message : err);
+        log.warn(` Could not blocklist movie ${movieId}:`, err instanceof Error ? err.message : err);
       }
     }
 
     // Delete all movie files
     for (const f of files) {
       await radarrService.deleteMovieFile(config.radarrUrl, config.radarrApiKey, f.id);
-      console.log(`[INFO] Deleted movie file ${f.id}`);
+      log.info(` Deleted movie file ${f.id}`);
     }
 
     // Search for replacement
     await radarrService.searchMovie(config.radarrUrl, config.radarrApiKey, [movieId]);
-    console.log(`[INFO] Triggered MoviesSearch for movie ${movieId}`);
+    log.info(` Triggered MoviesSearch for movie ${movieId}`);
 
     res.json({ success: true });
   } catch (err) {
@@ -355,7 +360,7 @@ router.get('/early', async (_req: Request, res: Response) => {
       });
     });
 
-    console.log(`[INFO] Radarr early: ${early.length} movie(s) with pre-release files`);
+    log.info(` Radarr early: ${early.length} movie(s) with pre-release files`);
     res.json(early);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -376,7 +381,7 @@ router.delete('/movie-file/:fileId', async (req: Request, res: Response) => {
       return;
     }
     await radarrService.deleteMovieFile(config.radarrUrl, config.radarrApiKey, fileId);
-    console.log(`[INFO] Radarr: deleted movie file ${fileId}`);
+    log.info(` Radarr: deleted movie file ${fileId}`);
     res.json({ success: true });
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;

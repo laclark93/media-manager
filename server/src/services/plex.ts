@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as log from '../logger.js';
 
 const PLEX_HEADERS = {
   'Accept': 'application/json',
@@ -24,9 +25,11 @@ let cachedServer: { token: string; info: ServerInfo } | null = null;
 /** Discover the user's owned Plex server, testing connectivity to each connection */
 export async function discoverServer(token: string): Promise<ServerInfo> {
   if (cachedServer && cachedServer.token === token) {
+    log.trace('Plex: using cached server connection');
     return cachedServer.info;
   }
 
+  log.verbose('Plex: discovering server via plex.tv');
   const resp = await axios.get('https://plex.tv/api/v2/resources', {
     params: { includeHttps: 1, includeRelay: 1 },
     headers: { ...PLEX_HEADERS, 'X-Plex-Token': token },
@@ -37,6 +40,7 @@ export async function discoverServer(token: string): Promise<ServerInfo> {
   );
   if (servers.length === 0) throw new Error('No owned Plex server found');
 
+  log.verbose(`Plex: found ${servers.length} owned server(s), testing connections`);
   const server = servers[0];
   const connections: any[] = server.connections || [];
 
@@ -47,6 +51,8 @@ export async function discoverServer(token: string): Promise<ServerInfo> {
     ...connections.filter((c: any) => !c.relay && c.protocol !== 'https'),
   ];
 
+  log.verbose(`Plex: ${ranked.length} connection(s) to test`);
+
   // Try each connection until one responds
   for (const conn of ranked) {
     try {
@@ -54,12 +60,12 @@ export async function discoverServer(token: string): Promise<ServerInfo> {
         headers: { ...PLEX_HEADERS, 'X-Plex-Token': token },
         timeout: 5000,
       });
-      console.log(`[INFO] Plex: connected via ${conn.uri}`);
+      log.info(`Plex: connected via ${conn.uri}${conn.relay ? ' (relay)' : ''}`);
       const info: ServerInfo = { machineIdentifier: server.clientIdentifier, uri: conn.uri };
       cachedServer = { token, info };
       return info;
     } catch {
-      console.log(`[INFO] Plex: connection failed for ${conn.uri}, trying next...`);
+      log.verbose(`Plex: connection failed for ${conn.uri}${conn.relay ? ' (relay)' : ''}, trying next...`);
     }
   }
 
@@ -68,6 +74,7 @@ export async function discoverServer(token: string): Promise<ServerInfo> {
 
 /** Clear cached server (e.g. when token changes) */
 export function clearCache() {
+  log.verbose('Plex: clearing cached server');
   cachedServer = null;
 }
 
@@ -78,6 +85,8 @@ export async function search(
 ): Promise<{ ratingKey: string; title: string; year: number }[]> {
   const server = await discoverServer(token);
   const plexType = type === 'movie' ? 1 : 2;
+
+  log.verbose(`Plex: searching for ${type} "${title}"`);
 
   // Try /hubs/search first (modern), fall back to /search (legacy)
   for (const endpoint of ['/hubs/search', '/search']) {
@@ -100,17 +109,21 @@ export async function search(
       }
 
       if (results.length > 0) {
+        log.verbose(`Plex: search "${title}" returned ${results.length} result(s) via ${endpoint}`);
         return results.map((m: any) => ({
           ratingKey: m.ratingKey,
           title: m.title,
           year: m.year,
         }));
       }
-    } catch {
+      log.trace(`Plex: search "${title}" via ${endpoint} returned 0 results`);
+    } catch (err) {
+      log.trace(`Plex: search "${title}" via ${endpoint} failed — ${err instanceof Error ? err.message : err}`);
       continue;
     }
   }
 
+  log.verbose(`Plex: search "${title}" found no results`);
   return [];
 }
 
@@ -126,7 +139,10 @@ export async function findShowByFilePath(
   const sections = sectionsResp.data.MediaContainer?.Directory || [];
   const tvSections = sections.filter((s: any) => s.type === 'show');
 
-  if (tvSections.length === 0) return null;
+  if (tvSections.length === 0) {
+    log.verbose('Plex findShowByFilePath: no TV sections found');
+    return null;
+  }
 
   // Strip trailing year suffix like " (2002)" from folder names for fuzzy matching
   const stripYear = (name: string) => name.replace(/\s*\(\d{4}\)\s*$/, '').trim();
@@ -144,7 +160,7 @@ export async function findShowByFilePath(
   }
 
   if (seriesFolders.length === 0) {
-    console.log(`[TRACE] plex findShowByFilePath: no series folders extracted from ${filePaths.length} paths (first: ${filePaths[0] ?? 'none'})`);
+    log.trace(`Plex findShowByFilePath: no series folders extracted from ${filePaths.length} paths (first: ${filePaths[0] ?? 'none'})`);
     return null;
   }
 
@@ -155,7 +171,7 @@ export async function findShowByFilePath(
     const stripped = stripYear(f);
     if (stripped !== f) namesToMatch.add(stripped);
   }
-  console.log(`[TRACE] plex findShowByFilePath: looking for folders [${[...namesToMatch].join(', ')}]`);
+  log.trace(`Plex findShowByFilePath: looking for folders [${[...namesToMatch].join(', ')}]`);
 
   // Browse each TV section and match by Location
   for (const section of tvSections) {
@@ -163,7 +179,7 @@ export async function findShowByFilePath(
       params: { type: 2, includeGuids: 0 },
     });
     const shows = allResp.data.MediaContainer?.Metadata || [];
-    console.log(`[TRACE] plex findShowByFilePath: section "${section.title}" has ${shows.length} shows`);
+    log.trace(`Plex findShowByFilePath: section "${section.title}" has ${shows.length} shows`);
 
     for (const show of shows) {
       // Try Location paths first
@@ -175,7 +191,7 @@ export async function findShowByFilePath(
 
         for (const name of namesToMatch) {
           if (locFolder === name || locStripped === name || locFolder.startsWith(name) || name.startsWith(locFolder) || locStripped.startsWith(name) || name.startsWith(locStripped)) {
-            console.log(`[TRACE] plex findShowByFilePath: matched "${show.title}" via folder "${locFolder}" ↔ "${name}"`);
+            log.trace(`Plex findShowByFilePath: matched "${show.title}" via folder "${locFolder}" ↔ "${name}"`);
             return { ratingKey: show.ratingKey, title: show.title, year: show.year ?? 0 };
           }
         }
@@ -186,14 +202,14 @@ export async function findShowByFilePath(
       const plexTitleStripped = stripYear(plexTitle);
       for (const name of namesToMatch) {
         if (plexTitle === name || plexTitleStripped === name || plexTitle.startsWith(name) || name.startsWith(plexTitle) || plexTitleStripped.startsWith(name) || name.startsWith(plexTitleStripped)) {
-          console.log(`[TRACE] plex findShowByFilePath: matched "${show.title}" via title "${plexTitle}" ↔ "${name}"`);
+          log.trace(`Plex findShowByFilePath: matched "${show.title}" via title "${plexTitle}" ↔ "${name}"`);
           return { ratingKey: show.ratingKey, title: show.title, year: show.year ?? 0 };
         }
       }
     }
   }
 
-  console.log(`[TRACE] plex findShowByFilePath: no match found`);
+  log.trace('Plex findShowByFilePath: no match found');
   return null;
 }
 
@@ -209,7 +225,10 @@ export async function findMovieByFilePath(
   const sections = sectionsResp.data.MediaContainer?.Directory || [];
   const movieSections = sections.filter((s: any) => s.type === 'movie');
 
-  if (movieSections.length === 0) return null;
+  if (movieSections.length === 0) {
+    log.verbose('Plex findMovieByFilePath: no movie sections found');
+    return null;
+  }
 
   const folderNames: string[] = [];
   for (const fp of filePaths) {
@@ -229,13 +248,14 @@ export async function findMovieByFilePath(
     const stripped = stripYear(f);
     if (stripped !== f) namesToMatch.add(stripped);
   }
-  console.log(`[TRACE] plex findMovieByFilePath: looking for folders [${[...namesToMatch].join(', ')}]`);
+  log.trace(`Plex findMovieByFilePath: looking for folders [${[...namesToMatch].join(', ')}]`);
 
   for (const section of movieSections) {
     const allResp = await client(server.uri, token).get(`/library/sections/${section.key}/all`, {
       params: { type: 1 },
     });
     const movies = allResp.data.MediaContainer?.Metadata || [];
+    log.trace(`Plex findMovieByFilePath: section "${section.title}" has ${movies.length} movies`);
 
     for (const movie of movies) {
       const locations: string[] = (movie.Location || []).map((l: any) => l.path?.replace(/\\/g, '/') || '');
@@ -246,7 +266,7 @@ export async function findMovieByFilePath(
 
         for (const name of namesToMatch) {
           if (locFolder === name || locStripped === name || locFolder.startsWith(name) || name.startsWith(locFolder) || locStripped.startsWith(name) || name.startsWith(locStripped)) {
-            console.log(`[TRACE] plex findMovieByFilePath: matched "${movie.title}" via folder "${locFolder}" ↔ "${name}"`);
+            log.trace(`Plex findMovieByFilePath: matched "${movie.title}" via folder "${locFolder}" ↔ "${name}"`);
             return { ratingKey: movie.ratingKey, title: movie.title, year: movie.year ?? 0 };
           }
         }
@@ -257,14 +277,14 @@ export async function findMovieByFilePath(
       const plexTitleStripped = stripYear(plexTitle);
       for (const name of namesToMatch) {
         if (plexTitle === name || plexTitleStripped === name || plexTitle.startsWith(name) || name.startsWith(plexTitle) || plexTitleStripped.startsWith(name) || name.startsWith(plexTitleStripped)) {
-          console.log(`[TRACE] plex findMovieByFilePath: matched "${movie.title}" via title "${plexTitle}" ↔ "${name}"`);
+          log.trace(`Plex findMovieByFilePath: matched "${movie.title}" via title "${plexTitle}" ↔ "${name}"`);
           return { ratingKey: movie.ratingKey, title: movie.title, year: movie.year ?? 0 };
         }
       }
     }
   }
 
-  console.log(`[TRACE] plex findMovieByFilePath: no match found`);
+  log.trace('Plex findMovieByFilePath: no match found');
   return null;
 }
 
@@ -274,8 +294,10 @@ export async function getShowEpisodes(
   showRatingKey: string,
 ): Promise<{ ratingKey: string; seasonNumber: number; episodeNumber: number; title: string }[]> {
   const server = await discoverServer(token);
+  log.verbose(`Plex: fetching episodes for show ratingKey=${showRatingKey}`);
   const resp = await client(server.uri, token).get(`/library/metadata/${showRatingKey}/allLeaves`);
   const episodes = resp.data.MediaContainer?.Metadata || [];
+  log.verbose(`Plex: fetched ${episodes.length} episodes for show ratingKey=${showRatingKey}`);
   return episodes.map((ep: any) => ({
     ratingKey: ep.ratingKey,
     seasonNumber: ep.parentIndex ?? 0,
@@ -295,18 +317,22 @@ export interface SubtitleStream {
 /** Get subtitle streams for a specific item (episode or movie) by its ratingKey */
 export async function getItemStreams(token: string, ratingKey: string, context?: string): Promise<SubtitleStream[]> {
   const server = await discoverServer(token);
+  const label = context ?? `ratingKey=${ratingKey}`;
+  log.trace(`Plex: fetching streams for ${label}`);
   const resp = await client(server.uri, token).get(`/library/metadata/${ratingKey}`);
   const metadata = resp.data.MediaContainer?.Metadata?.[0];
-  if (!metadata) return [];
+  if (!metadata) {
+    log.trace(`Plex: no metadata found for ${label}`);
+    return [];
+  }
   const streams: SubtitleStream[] = [];
-  const label = context ?? `ratingKey=${ratingKey}`;
   for (const media of metadata.Media || []) {
     for (const part of media.Part || []) {
       const allStreams = part.Stream || [];
-      console.log(`[TRACE] plex getItemStreams ${label}: ${allStreams.length} total streams, types=[${allStreams.map((s: any) => s.streamType).join(',')}]`);
+      log.trace(`Plex getItemStreams ${label}: ${allStreams.length} total streams, types=[${allStreams.map((s: any) => s.streamType).join(',')}]`);
       for (const stream of allStreams) {
         if (stream.streamType === 3) {
-          console.log(`[TRACE] plex subtitle stream ${label}: language=${stream.language ?? 'null'} languageCode=${stream.languageCode ?? 'null'} displayTitle=${stream.displayTitle ?? 'null'} codec=${stream.codec ?? 'null'}`);
+          log.trace(`Plex subtitle stream ${label}: language=${stream.language ?? 'null'} languageCode=${stream.languageCode ?? 'null'} displayTitle=${stream.displayTitle ?? 'null'} codec=${stream.codec ?? 'null'}`);
           streams.push({
             language: stream.language || '',
             languageCode: stream.languageCode || '',
@@ -318,6 +344,7 @@ export async function getItemStreams(token: string, ratingKey: string, context?:
       }
     }
   }
+  log.verbose(`Plex: ${streams.length} subtitle stream(s) found for ${label}`);
   return streams;
 }
 
@@ -330,28 +357,37 @@ export function buildWebUrl(machineIdentifier: string, ratingKey: string): strin
 /** Test connection by discovering the server */
 export async function testConnection(token: string): Promise<boolean> {
   try {
+    log.verbose('Plex: testing connection');
     clearCache();
     await discoverServer(token);
+    log.verbose('Plex: connection test succeeded');
     return true;
-  } catch {
+  } catch (err) {
+    log.verbose(`Plex: connection test failed — ${err instanceof Error ? err.message : err}`);
     return false;
   }
 }
 
 /** Create a Plex PIN for OAuth popup flow */
 export async function createPin(): Promise<{ id: number; code: string }> {
+  log.verbose('Plex: creating OAuth PIN');
   const resp = await axios.post(
     'https://plex.tv/api/v2/pins',
     new URLSearchParams({ strong: 'true' }),
     { headers: PLEX_HEADERS },
   );
+  log.verbose(`Plex: created PIN id=${resp.data.id}`);
   return { id: resp.data.id, code: resp.data.code };
 }
 
 /** Check if a PIN has been claimed (user authenticated), returns token or null */
 export async function checkPin(pinId: number): Promise<string | null> {
+  log.trace(`Plex: checking PIN ${pinId}`);
   const resp = await axios.get(`https://plex.tv/api/v2/pins/${pinId}`, {
     headers: PLEX_HEADERS,
   });
-  return resp.data.authToken || null;
+  const token = resp.data.authToken || null;
+  if (token) log.info(`Plex: PIN ${pinId} claimed successfully`);
+  else log.trace(`Plex: PIN ${pinId} not yet claimed`);
+  return token;
 }

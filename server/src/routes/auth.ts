@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { readSettings, writeSettings } from '../settings.js';
+import * as log from '../logger.js';
 
 const router = Router();
 
@@ -44,6 +45,7 @@ router.post('/setup', async (req, res) => {
   const secret = getOrCreateJwtSecret();
   writeSettings({ ...settings, username: username.trim(), passwordHash });
   const token = jwt.sign({ username: username.trim() }, secret, { expiresIn: '7d' });
+  log.info(`Auth: initial credentials configured for user "${username.trim()}"`);
   res.json({ token, username: username.trim() });
 });
 
@@ -60,16 +62,19 @@ router.post('/login', async (req, res) => {
     return;
   }
   if (username !== settings.username) {
+    log.warn(`Auth: login failed — invalid username "${username}"`);
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
   const valid = await bcrypt.compare(password, settings.passwordHash);
   if (!valid) {
+    log.warn(`Auth: login failed — invalid password for "${username}"`);
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
   const secret = getOrCreateJwtSecret();
   const token = jwt.sign({ username }, secret, { expiresIn: '7d' });
+  log.info(`Auth: user "${username}" logged in successfully`);
   res.json({ token, username });
 });
 
@@ -104,6 +109,7 @@ router.post('/change-password', async (req, res) => {
   writeSettings({ ...settings, username, passwordHash });
   // Issue a new token with the updated username
   const token = jwt.sign({ username }, secret, { expiresIn: '7d' });
+  log.info(`Auth: password changed for user "${username}"`);
   res.json({ token, username });
 });
 

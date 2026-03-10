@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import { getConfig } from '../config.js';
+import * as log from '../logger.js';
 import * as sonarrService from '../services/sonarr.js';
 import * as plexService from '../services/plex.js';
 
@@ -56,7 +57,8 @@ router.get('/series', async (_req: Request, res: Response) => {
       ...s,
       latestMissingAirDate: latestMissingBySeriesId.get(s.id) ?? null,
     }));
-    console.log(`[INFO] Sonarr series: ${missingSeries.length} missing (of ${allSeries.length} total)`);
+    log.info(`Sonarr series: ${missingSeries.length} missing (of ${allSeries.length} total)`);
+    log.verbose(`Sonarr series: fetched ${allSeries.length} total, ${wantedMissing.length} wanted/missing records`);
     res.json(enriched);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -76,6 +78,7 @@ router.get('/episodes', async (req: Request, res: Response) => {
     const missing = episodes.filter(
       (ep) => !ep.hasFile && ep.monitored && ep.airDateUtc && new Date(ep.airDateUtc) < new Date()
     );
+    log.verbose(`Sonarr episodes: series ${seriesId} has ${missing.length} missing (of ${episodes.length} total)`);
     res.json(missing);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -87,6 +90,7 @@ router.post('/search/series', async (req: Request, res: Response) => {
   try {
     const config = getConfig();
     const { seriesId } = req.body;
+    log.verbose(`Sonarr route: search/series request for seriesId=${seriesId}`);
     const result = await sonarrService.searchSeries(config.sonarrUrl, config.sonarrApiKey, seriesId);
     res.json(result);
   } catch (err) {
@@ -99,6 +103,7 @@ router.post('/search/episodes', async (req: Request, res: Response) => {
   try {
     const config = getConfig();
     const { episodeIds } = req.body;
+    log.verbose(`Sonarr route: search/episodes request for ${episodeIds?.length ?? 0} episode(s)`);
     const result = await sonarrService.searchEpisodes(config.sonarrUrl, config.sonarrApiKey, episodeIds);
     res.json(result);
   } catch (err) {
@@ -109,6 +114,7 @@ router.post('/search/episodes', async (req: Request, res: Response) => {
 
 router.get('/anime-check', async (_req: Request, res: Response) => {
   try {
+    log.verbose('Sonarr route: anime-check starting');
     const config = getConfig();
     if (!config.sonarrUrl || !config.sonarrApiKey) {
       res.status(400).json({ error: 'Sonarr not configured' });
@@ -141,7 +147,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
         };
       })
       .filter(Boolean);
-    console.log(`[INFO] Sonarr anime-check: ${mismatches.length} mismatch(es) found`);
+    log.info(` Sonarr anime-check: ${mismatches.length} mismatch(es) found`);
     res.json(mismatches);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -151,6 +157,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
 
 router.get('/subtitle-check', async (_req: Request, res: Response) => {
   try {
+    log.verbose('Sonarr route: subtitle-check starting');
     const config = getConfig();
     if (!config.sonarrUrl || !config.sonarrApiKey) {
       res.status(400).json({ error: 'Sonarr not configured' });
@@ -203,7 +210,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         if (flagged) {
           const ep = fileToEpisode.get(f.id);
           const epLabel = ep ? `S${String(f.seasonNumber).padStart(2,'0')}E${String(ep.episodeNumber).padStart(2,'0')}` : `S${String(f.seasonNumber).padStart(2,'0')}E??`;
-          console.log(`[TRACE] subtitle-check flag: "${s.title}" ${epLabel} fileId=${f.id} subtitles=${JSON.stringify(f.mediaInfo?.subtitles ?? null)}`);
+          log.trace(` subtitle-check flag: "${s.title}" ${epLabel} fileId=${f.id} subtitles=${JSON.stringify(f.mediaInfo?.subtitles ?? null)}`);
         }
         return flagged;
       });
@@ -251,12 +258,12 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         missing.map(async (item) => {
           try {
             let plexMatches = await plexService.search(config.plexToken, item.title, 'show');
-            console.log(`[TRACE] plex search "${item.title}": ${plexMatches.length} result(s)`);
+            log.trace(` plex search "${item.title}": ${plexMatches.length} result(s)`);
 
             // Fallback: if title search fails, match by file path (handles title mismatches like "Full Moon wo Sagashite" vs "Full Moon")
             let match: { ratingKey: string; title: string; year: number } | undefined;
             if (plexMatches.length === 0 && item.filePaths?.length > 0) {
-              console.log(`[TRACE] plex title search failed for "${item.title}", trying file-path fallback`);
+              log.trace(` plex title search failed for "${item.title}", trying file-path fallback`);
               const pathMatch = await plexService.findShowByFilePath(config.plexToken, item.filePaths);
               if (pathMatch) {
                 match = pathMatch;
@@ -266,7 +273,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
             }
 
             if (!match) return item;
-            console.log(`[TRACE] plex match: "${match.title}" (${match.year}) ratingKey=${match.ratingKey}`);
+            log.trace(` plex match: "${match.title}" (${match.year}) ratingKey=${match.ratingKey}`);
 
             const plexEpisodes = await plexService.getShowEpisodes(config.plexToken, match.ratingKey);
             const plexEpMap = new Map<string, string>();
@@ -274,7 +281,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               const key = `S${String(ep.seasonNumber).padStart(2, '0')}E${String(ep.episodeNumber).padStart(2, '0')}`;
               plexEpMap.set(key, ep.ratingKey);
             }
-            console.log(`[TRACE] plex episodes found: ${plexEpisodes.length}`);
+            log.trace(` plex episodes found: ${plexEpisodes.length}`);
 
             // Fetch streams only for affected episodes that exist in Plex
             // For combined files (e.g. S05E03-04), try all episode keys to find the Plex entry
@@ -288,7 +295,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               })
               .filter(x => x.ratingKey);
 
-            console.log(`[TRACE] plex targets for stream check "${item.title}": ${targets.map(x => x.key + (x.plexKey !== x.key ? `(→${x.plexKey})` : '')).join(', ') || 'none'}`);
+            log.trace(` plex targets for stream check "${item.title}": ${targets.map(x => x.key + (x.plexKey !== x.key ? `(→${x.plexKey})` : '')).join(', ') || 'none'}`);
             if (targets.length === 0) return item;
 
             const streamResults = await Promise.allSettled(
@@ -301,7 +308,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               if (r.status === 'fulfilled') {
                 const subStreams = r.value;
                 const epLabel = x.plexKey !== x.key ? `${x.key}(→${x.plexKey})` : x.key;
-                console.log(`[TRACE] plex streams for "${item.title}" ${epLabel}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'} display=${s.displayTitle ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
+                log.trace(` plex streams for "${item.title}" ${epLabel}: ${subStreams.map((s: any) => `lang=${s.language ?? 'null'} code=${s.languageCode ?? 'null'} display=${s.displayTitle ?? 'null'}`).join(', ') || 'no subtitle streams'}`);
                 if (r.value.some((s: any) => {
                   const code = s.languageCode?.toLowerCase()?.trim();
                   const lang = s.language?.toLowerCase()?.trim();
@@ -312,12 +319,12 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
                   plexHasEngSub.add(x.key);
                 }
               } else {
-                console.log(`[TRACE] plex stream fetch failed for ${x.key}: ${r.reason}`);
+                log.trace(` plex stream fetch failed for ${x.key}: ${r.reason}`);
               }
             });
 
             if (plexHasEngSub.size === 0) {
-              console.log(`[TRACE] plex found no English subs for "${item.title}" — keeping flagged`);
+              log.trace(` plex found no English subs for "${item.title}" — keeping flagged`);
               return item;
             }
 
@@ -327,11 +334,11 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
               return !plexHasEngSub.has(key);
             });
 
-            console.log(`[TRACE] plex cleared ${plexHasEngSub.size} episode(s) in "${item.title}": ${[...plexHasEngSub].join(', ')}`);
+            log.trace(` plex cleared ${plexHasEngSub.size} episode(s) in "${item.title}": ${[...plexHasEngSub].join(', ')}`);
 
             return { ...item, affectedEpisodes: filteredEps, affectedFiles: filteredEps.length };
           } catch (err) {
-            console.log(`[TRACE] plex lookup failed for "${item.title}": ${err instanceof Error ? err.message : err}`);
+            log.trace(` plex lookup failed for "${item.title}": ${err instanceof Error ? err.message : err}`);
             return item;
           }
         })
@@ -341,7 +348,7 @@ router.get('/subtitle-check', async (_req: Request, res: Response) => {
         .filter((item): item is any => item != null && item.affectedFiles > 0);
     }
 
-    console.log(`[INFO] Sonarr subtitle-check: ${missing.length} series with missing English subs (of ${animeSeries.length} anime series checked)`);
+    log.info(` Sonarr subtitle-check: ${missing.length} series with missing English subs (of ${animeSeries.length} anime series checked)`);
     res.json(missing);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -402,23 +409,23 @@ router.post('/mark-failed', async (req: Request, res: Response) => {
           .sort((a, b) => b.id - a.id)[0]; // most recent grab
         if (grabRecord) {
           await sonarrService.markHistoryFailed(config.sonarrUrl, config.sonarrApiKey, grabRecord.id);
-          console.log(`[INFO] Marked history ${grabRecord.id} as failed for episode ${episodeId}`);
+          log.info(` Marked history ${grabRecord.id} as failed for episode ${episodeId}`);
         } else {
-          console.log(`[WARN] No grab history found for episode ${episodeId} — skipping blocklist`);
+          log.warn(` No grab history found for episode ${episodeId} — skipping blocklist`);
         }
       } catch (err) {
-        console.log(`[WARN] Could not blocklist episode ${episodeId}:`, err instanceof Error ? err.message : err);
+        log.warn(` Could not blocklist episode ${episodeId}:`, err instanceof Error ? err.message : err);
       }
     }
 
     // 2. Delete the episode file
     await sonarrService.deleteEpisodeFile(config.sonarrUrl, config.sonarrApiKey, episodeFileId);
-    console.log(`[INFO] Deleted episode file ${episodeFileId}`);
+    log.info(` Deleted episode file ${episodeFileId}`);
 
     // 3. Search for a replacement
     if (episodeId) {
       await sonarrService.searchEpisodes(config.sonarrUrl, config.sonarrApiKey, [episodeId]);
-      console.log(`[INFO] Triggered EpisodeSearch for episode ${episodeId}`);
+      log.info(` Triggered EpisodeSearch for episode ${episodeId}`);
     }
 
     res.json({ success: true });
@@ -471,9 +478,9 @@ router.post('/mark-episode-failed', async (req: Request, res: Response) => {
         try {
           await sonarrService.markHistoryFailed(config.sonarrUrl, config.sonarrApiKey, grabRecord.id);
           blocklisted++;
-          console.log(`[INFO] Marked history ${grabRecord.id} as failed for episode ${ep.id}`);
+          log.info(` Marked history ${grabRecord.id} as failed for episode ${ep.id}`);
         } catch (err) {
-          console.log(`[WARN] Could not blocklist episode ${ep.id}:`, err instanceof Error ? err.message : err);
+          log.warn(` Could not blocklist episode ${ep.id}:`, err instanceof Error ? err.message : err);
         }
       }
 
@@ -481,16 +488,16 @@ router.post('/mark-episode-failed', async (req: Request, res: Response) => {
       try {
         await sonarrService.deleteEpisodeFile(config.sonarrUrl, config.sonarrApiKey, ep.episodeFileId!);
         deleted++;
-        console.log(`[INFO] Deleted episode file ${ep.episodeFileId}`);
+        log.info(` Deleted episode file ${ep.episodeFileId}`);
       } catch (err) {
-        console.log(`[WARN] Could not delete episode file ${ep.episodeFileId}:`, err instanceof Error ? err.message : err);
+        log.warn(` Could not delete episode file ${ep.episodeFileId}:`, err instanceof Error ? err.message : err);
       }
     }
 
     // Search for replacements
     const episodeIds = targets.map(ep => ep.id);
     await sonarrService.searchEpisodes(config.sonarrUrl, config.sonarrApiKey, episodeIds);
-    console.log(`[INFO] Triggered EpisodeSearch for ${episodeIds.length} episodes`);
+    log.info(` Triggered EpisodeSearch for ${episodeIds.length} episodes`);
 
     res.json({ success: true, blocklisted, deleted, searched: episodeIds.length });
   } catch (err) {
@@ -507,7 +514,7 @@ router.get('/missing-timeline', async (_req: Request, res: Response) => {
       return;
     }
     const episodes = await sonarrService.getWantedMissingDetailed(config.sonarrUrl, config.sonarrApiKey);
-    console.log(`[INFO] Sonarr missing-timeline: ${episodes.length} missing episodes`);
+    log.info(` Sonarr missing-timeline: ${episodes.length} missing episodes`);
     res.json(episodes);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -570,7 +577,7 @@ router.get('/early', async (_req: Request, res: Response) => {
       });
     });
 
-    console.log(`[INFO] Sonarr early: ${early.length} series with pre-release files`);
+    log.info(` Sonarr early: ${early.length} series with pre-release files`);
     res.json(early);
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
@@ -591,7 +598,7 @@ router.delete('/episode-file/:fileId', async (req: Request, res: Response) => {
       return;
     }
     await sonarrService.deleteEpisodeFile(config.sonarrUrl, config.sonarrApiKey, fileId);
-    console.log(`[INFO] Sonarr: deleted episode file ${fileId}`);
+    log.info(` Sonarr: deleted episode file ${fileId}`);
     res.json({ success: true });
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;

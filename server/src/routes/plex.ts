@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { getConfig } from '../config.js';
+import * as log from '../logger.js';
 import * as plexService from '../services/plex.js';
 
 const router = Router();
 
 // GET /api/plex/web-url?title=...&year=...&type=show|movie
 router.get('/web-url', async (req, res) => {
+  log.verbose(`Plex route: web-url request for "${req.query.title}" (${req.query.type})`);
   const config = getConfig();
   if (!config.plexToken) {
     res.status(400).json({ error: 'Plex not configured' });
@@ -32,7 +34,7 @@ router.get('/web-url', async (req, res) => {
     const url = plexService.buildWebUrl(server.machineIdentifier, match.ratingKey);
     res.json({ url });
   } catch (err) {
-    console.error('[ERROR] Plex web-url lookup failed:', err);
+    log.error(`Plex web-url lookup failed: ${err instanceof Error ? err.message : err}`);
     res.status(502).json({ error: 'Plex lookup failed' });
   }
 });
@@ -40,6 +42,7 @@ router.get('/web-url', async (req, res) => {
 // GET /api/plex/episode-urls?title=...&year=...&type=show|movie
 // Returns show-level URL + per-episode URLs keyed by "S##E##"
 router.get('/episode-urls', async (req, res) => {
+  log.verbose(`Plex route: episode-urls request for "${req.query.title}" (${req.query.type})`);
   const config = getConfig();
   if (!config.plexToken) {
     res.status(400).json({ error: 'Plex not configured' });
@@ -80,7 +83,7 @@ router.get('/episode-urls', async (req, res) => {
 
     res.json({ showUrl, episodes });
   } catch (err) {
-    console.error('[ERROR] Plex episode-urls lookup failed:', err);
+    log.error(`Plex episode-urls lookup failed: ${err instanceof Error ? err.message : err}`);
     res.status(502).json({ error: 'Plex lookup failed' });
   }
 });
@@ -88,6 +91,7 @@ router.get('/episode-urls', async (req, res) => {
 // GET /api/plex/subtitle-streams?title=...&year=...&type=show|movie&episodes=S01E01,S01E02
 // Returns subtitle streams per episode key (shows) or { movie: [...] } (movies)
 router.get('/subtitle-streams', async (req, res) => {
+  log.verbose(`Plex route: subtitle-streams request for "${req.query.title}" (${req.query.type})`);
   const config = getConfig();
   if (!config.plexToken) {
     res.status(400).json({ error: 'Plex not configured' });
@@ -146,7 +150,7 @@ router.get('/subtitle-streams', async (req, res) => {
 
     res.json({ machineIdentifier: server.machineIdentifier, episodes: subtitleMap });
   } catch (err) {
-    console.error('[ERROR] Plex subtitle-streams failed:', err);
+    log.error(`Plex subtitle-streams failed: ${err instanceof Error ? err.message : err}`);
     res.status(502).json({ error: 'Plex lookup failed' });
   }
 });
@@ -157,7 +161,7 @@ router.post('/auth/pin', async (_req, res) => {
     const pin = await plexService.createPin();
     res.json(pin);
   } catch (err) {
-    console.error('[ERROR] Plex PIN creation failed:', err);
+    log.error(`Plex PIN creation failed: ${err instanceof Error ? err.message : err}`);
     res.status(502).json({ error: 'Failed to create Plex PIN' });
   }
 });
@@ -173,7 +177,7 @@ router.get('/auth/pin/:id', async (req, res) => {
     const token = await plexService.checkPin(pinId);
     res.json({ token });
   } catch (err) {
-    console.error('[ERROR] Plex PIN check failed:', err);
+    log.error(`Plex PIN check failed: ${err instanceof Error ? err.message : err}`);
     res.status(502).json({ error: 'Failed to check Plex PIN' });
   }
 });

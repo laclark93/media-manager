@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getConfig } from '../config.js';
+import * as log from '../logger.js';
 import { readSettings, writeSettings } from '../settings.js';
 import * as sonarrService from '../services/sonarr.js';
 import * as radarrService from '../services/radarr.js';
@@ -47,6 +48,8 @@ router.put('/', (req, res) => {
     stalenessThresholds: stalenessThresholds ?? current.stalenessThresholds,
   };
   writeSettings(updated);
+  log.info('Settings: configuration updated');
+  log.verbose(`Settings: updated keys — ${Object.keys(req.body).join(', ')}`);
   res.json({ success: true });
 });
 
@@ -57,7 +60,9 @@ router.post('/test/sonarr', async (req, res) => {
     res.status(400).json({ error: 'URL and API key required' });
     return;
   }
+  log.verbose(`Settings: testing Sonarr connection to ${url}`);
   const ok = await sonarrService.testConnection(url, effectiveKey);
+  log.info(`Settings: Sonarr connection test ${ok ? 'succeeded' : 'failed'}`);
   res.json({ success: ok });
 });
 
@@ -68,7 +73,9 @@ router.post('/test/radarr', async (req, res) => {
     res.status(400).json({ error: 'URL and API key required' });
     return;
   }
+  log.verbose(`Settings: testing Radarr connection to ${url}`);
   const ok = await radarrService.testConnection(url, effectiveKey);
+  log.info(`Settings: Radarr connection test ${ok ? 'succeeded' : 'failed'}`);
   res.json({ success: ok });
 });
 
@@ -79,7 +86,9 @@ router.post('/test/jellyseerr', async (req, res) => {
     res.status(400).json({ error: 'URL and API key required' });
     return;
   }
+  log.verbose(`Settings: testing Jellyseerr connection to ${url}`);
   const ok = await jellyseerrService.testConnection(url, effectiveKey);
+  log.info(`Settings: Jellyseerr connection test ${ok ? 'succeeded' : 'failed'}`);
   res.json({ success: ok });
 });
 
@@ -90,7 +99,9 @@ router.post('/test/plex', async (req, res) => {
     res.status(400).json({ error: 'Token required' });
     return;
   }
+  log.verbose('Settings: testing Plex connection');
   const ok = await plexService.testConnection(effectiveKey);
+  log.info(`Settings: Plex connection test ${ok ? 'succeeded' : 'failed'}`);
   res.json({ success: ok });
 });
 

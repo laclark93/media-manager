@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getConfig } from './config.js';
+import * as log from './logger.js';
 import sonarrRouter from './routes/sonarr.js';
 import radarrRouter from './routes/radarr.js';
 import settingsRouter from './routes/settings.js';
@@ -23,10 +24,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   res.on('finish', () => {
     const ms = Date.now() - start;
-    const level = res.statusCode >= 500 ? 'ERROR' : res.statusCode >= 400 ? 'WARN' : 'INFO';
     const manual = req.headers['x-manual-refresh'] === '1' ? ' [MANUAL]' : '';
     const qs = Object.keys(req.query).length ? `?${new URLSearchParams(req.query as Record<string, string>)}` : '';
-    console.log(`[${level}]${manual} ${req.method} ${req.path}${qs} → ${res.statusCode} (${ms}ms)`);
+    const msg = `${manual} ${req.method} ${req.path}${qs} → ${res.statusCode} (${ms}ms)`;
+    if (res.statusCode >= 500) log.error(msg);
+    else if (res.statusCode >= 400) log.warn(msg);
+    else log.info(msg);
   });
   next();
 });
@@ -55,9 +58,10 @@ if (process.env.NODE_ENV === 'production') {
 
 const config = getConfig();
 app.listen(config.port, () => {
-  console.log(`[INFO] Missing Media Dashboard running on port ${config.port}`);
-  console.log(`[INFO] Sonarr:     ${config.sonarrUrl || '(not configured)'}`);
-  console.log(`[INFO] Radarr:     ${config.radarrUrl || '(not configured)'}`);
-  console.log(`[INFO] Jellyseerr: ${config.jellyseerrUrl || '(not configured)'}`);
-  console.log(`[INFO] Plex:       ${config.plexToken ? '(configured)' : '(not configured)'}`);
+  log.info(`Missing Media Dashboard v${process.env.npm_package_version || 'dev'} running on port ${config.port}`);
+  log.info(`Verbose logging: ${log.isVerbose() ? 'ON' : 'OFF'} (set VERBOSE_LOGGING=false to disable)`);
+  log.info(`Sonarr:     ${config.sonarrUrl || '(not configured)'}`);
+  log.info(`Radarr:     ${config.radarrUrl || '(not configured)'}`);
+  log.info(`Jellyseerr: ${config.jellyseerrUrl || '(not configured)'}`);
+  log.info(`Plex:       ${config.plexToken ? '(configured)' : '(not configured)'}`);
 });
