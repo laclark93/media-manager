@@ -73,6 +73,13 @@ export async function getTags(baseUrl: string, apiKey: string): Promise<ArrTag[]
   return resp.data;
 }
 
+export async function getRootFolders(baseUrl: string, apiKey: string): Promise<{ id: number; path: string }[]> {
+  log.verbose('Sonarr: fetching root folders');
+  const resp = await client(baseUrl, apiKey).get('/api/v3/rootfolder');
+  log.verbose(`Sonarr: fetched ${resp.data.length} root folders`);
+  return resp.data;
+}
+
 export async function getSeriesHistory(baseUrl: string, apiKey: string, seriesId: number): Promise<SonarrHistoryRecord[]> {
   log.verbose(`Sonarr: fetching history for series ${seriesId}`);
   const resp = await client(baseUrl, apiKey).get('/api/v3/history/series', {

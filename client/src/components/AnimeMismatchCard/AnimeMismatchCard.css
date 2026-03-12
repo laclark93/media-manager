@@ -57,6 +57,10 @@
   background: #9b59b6;
 }
 
+.amcard__badge--wrong-directory {
+  background: #2980b9;
+}
+
 .amcard__badge--no-english-subs {
   background: #c0392b;
 }

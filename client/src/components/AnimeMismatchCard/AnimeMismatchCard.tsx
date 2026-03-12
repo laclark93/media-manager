@@ -60,7 +60,9 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore }: Anim
         : null;
 
   const mismatchLabel =
-    item.mismatchType === 'anime-not-tagged' ? 'Missing anime tag' : 'Incorrectly tagged';
+    item.mismatchType === 'anime-not-tagged' ? 'Missing anime tag'
+    : item.mismatchType === 'wrong-directory' ? 'Wrong directory'
+    : 'Incorrectly tagged';
 
   const openServiceLabel = item.service === 'sonarr' ? 'Sonarr' : 'Radarr';
 
@@ -101,6 +103,11 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore }: Anim
         <div className="amcard__info">
           <div className="amcard__title" title={item.title}>{item.title}</div>
           {item.year && <div className="amcard__year">{item.year}</div>}
+          {item.mismatchType === 'wrong-directory' && item.currentPath && (
+            <div className="amcard__year" title={item.currentPath} style={{ fontSize: '0.68rem' }}>
+              {item.currentPath}
+            </div>
+          )}
           <div className="amcard__actions">
             {openUrl && (
               <a

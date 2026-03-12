@@ -4,8 +4,9 @@ export interface AnimeMismatch {
   year?: number;
   service: 'sonarr' | 'radarr';
   /** 'anime-not-tagged' = IS anime but missing the "anime" tag
-   *  'tagged-not-anime' = HAS the "anime" tag but doesn't look like anime */
-  mismatchType: 'anime-not-tagged' | 'tagged-not-anime';
+   *  'tagged-not-anime' = HAS the "anime" tag but doesn't look like anime
+   *  'wrong-directory'  = IS anime (tagged/typed) but not in the anime root folder */
+  mismatchType: 'anime-not-tagged' | 'tagged-not-anime' | 'wrong-directory';
   seriesType?: string;
   genres?: string[];
   originalLanguage?: string;
@@ -13,6 +14,7 @@ export interface AnimeMismatch {
   posterUrl?: string;
   remotePosterUrl?: string;
   hasMissing?: boolean;
+  currentPath?: string;
 }
 
 export interface AffectedEpisode {

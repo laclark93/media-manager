@@ -68,36 +68,42 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
       res.status(400).json({ error: 'Radarr not configured' });
       return;
     }
-    const [allMovies, tags] = await Promise.all([
+    const [allMovies, tags, rootFolders] = await Promise.all([
       radarrService.getMovies(config.radarrUrl, config.radarrApiKey),
       radarrService.getTags(config.radarrUrl, config.radarrApiKey),
+      radarrService.getRootFolders(config.radarrUrl, config.radarrApiKey),
     ]);
     const animeTagId = tags.find(t => t.label.toLowerCase() === config.radarrAnimeTag.toLowerCase())?.id;
-    const mismatches = allMovies
-      .filter(m => m.monitored)
-      .map(m => {
-        // Anime signal: Animation genre + Japanese original language
-        const isAnimeMovie =
-          m.genres.some(g => g.toLowerCase() === 'animation') &&
-          m.originalLanguage?.name?.toLowerCase() === 'japanese';
-        const hasAnimeTag = animeTagId !== undefined && m.tags.includes(animeTagId);
-        if (isAnimeMovie === hasAnimeTag) return null;
-        const poster = m.images.find(i => i.coverType === 'poster');
-        return {
-          id: m.id,
-          title: m.title,
-          year: m.year,
-          service: 'radarr' as const,
-          mismatchType: isAnimeMovie ? 'anime-not-tagged' : 'tagged-not-anime',
-          genres: m.genres,
-          originalLanguage: m.originalLanguage?.name,
-          slug: m.titleSlug,
-          posterUrl: poster ? `/api/radarr/image${poster.url}` : undefined,
-          remotePosterUrl: poster?.remoteUrl,
-          hasMissing: !m.hasFile,
-        };
-      })
-      .filter(Boolean);
+    const animeRootPaths = rootFolders.filter(rf => rf.path.toLowerCase().includes('anime')).map(rf => rf.path);
+    const isInAnimeDir = (p: string) => animeRootPaths.some(rp => p.startsWith(rp));
+    const mismatches: any[] = [];
+    for (const m of allMovies) {
+      if (!m.monitored) continue;
+      const isAnimeMovie =
+        m.genres.some(g => g.toLowerCase() === 'animation') &&
+        m.originalLanguage?.name?.toLowerCase() === 'japanese';
+      const hasAnimeTag = animeTagId !== undefined && m.tags.includes(animeTagId);
+      const inAnimeDir = isInAnimeDir(m.path);
+      const poster = m.images.find(i => i.coverType === 'poster');
+      const base = {
+        id: m.id,
+        title: m.title,
+        year: m.year,
+        service: 'radarr' as const,
+        genres: m.genres,
+        originalLanguage: m.originalLanguage?.name,
+        slug: m.titleSlug,
+        posterUrl: poster ? `/api/radarr/image${poster.url}` : undefined,
+        remotePosterUrl: poster?.remoteUrl,
+        hasMissing: !m.hasFile,
+      };
+      if (isAnimeMovie !== hasAnimeTag) {
+        mismatches.push({ ...base, mismatchType: isAnimeMovie ? 'anime-not-tagged' : 'tagged-not-anime' });
+      }
+      if ((isAnimeMovie || hasAnimeTag) && animeRootPaths.length > 0 && !inAnimeDir) {
+        mismatches.push({ ...base, mismatchType: 'wrong-directory', currentPath: m.path });
+      }
+    }
     log.info(` Radarr anime-check: ${mismatches.length} mismatch(es) found`);
     res.json(mismatches);
   } catch (err) {

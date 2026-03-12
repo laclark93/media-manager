@@ -120,33 +120,41 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
       res.status(400).json({ error: 'Sonarr not configured' });
       return;
     }
-    const [allSeries, tags] = await Promise.all([
+    const [allSeries, tags, rootFolders] = await Promise.all([
       sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey),
       sonarrService.getTags(config.sonarrUrl, config.sonarrApiKey),
+      sonarrService.getRootFolders(config.sonarrUrl, config.sonarrApiKey),
     ]);
     const animeTagId = tags.find(t => t.label.toLowerCase() === config.sonarrAnimeTag.toLowerCase())?.id;
-    const mismatches = allSeries
-      .filter(s => s.monitored && s.statistics)
-      .map(s => {
-        const isAnimeSeries = s.seriesType === 'anime';
-        const hasAnimeTag = animeTagId !== undefined && s.tags.includes(animeTagId);
-        if (isAnimeSeries === hasAnimeTag) return null;
-        const poster = s.images.find(i => i.coverType === 'poster');
-        return {
-          id: s.id,
-          title: s.title,
-          year: s.year,
-          service: 'sonarr' as const,
-          mismatchType: isAnimeSeries ? 'anime-not-tagged' : 'tagged-not-anime',
-          seriesType: s.seriesType,
-          genres: s.genres,
-          slug: s.titleSlug,
-          posterUrl: poster ? `/api/sonarr/image${poster.url}` : undefined,
-          remotePosterUrl: poster?.remoteUrl,
-          hasMissing: s.statistics.episodeCount > s.statistics.episodeFileCount,
-        };
-      })
-      .filter(Boolean);
+    // Identify anime root folders (path contains "anime")
+    const animeRootPaths = rootFolders.filter(rf => rf.path.toLowerCase().includes('anime')).map(rf => rf.path);
+    const isInAnimeDir = (p: string) => animeRootPaths.some(rp => p.startsWith(rp));
+    const mismatches: any[] = [];
+    for (const s of allSeries) {
+      if (!s.monitored || !s.statistics) continue;
+      const isAnimeSeries = s.seriesType === 'anime';
+      const hasAnimeTag = animeTagId !== undefined && s.tags.includes(animeTagId);
+      const inAnimeDir = isInAnimeDir(s.path);
+      const poster = s.images.find(i => i.coverType === 'poster');
+      const base = {
+        id: s.id,
+        title: s.title,
+        year: s.year,
+        service: 'sonarr' as const,
+        seriesType: s.seriesType,
+        genres: s.genres,
+        slug: s.titleSlug,
+        posterUrl: poster ? `/api/sonarr/image${poster.url}` : undefined,
+        remotePosterUrl: poster?.remoteUrl,
+        hasMissing: s.statistics.episodeCount > s.statistics.episodeFileCount,
+      };
+      if (isAnimeSeries !== hasAnimeTag) {
+        mismatches.push({ ...base, mismatchType: isAnimeSeries ? 'anime-not-tagged' : 'tagged-not-anime' });
+      }
+      if ((isAnimeSeries || hasAnimeTag) && animeRootPaths.length > 0 && !inAnimeDir) {
+        mismatches.push({ ...base, mismatchType: 'wrong-directory', currentPath: s.path });
+      }
+    }
     log.info(` Sonarr anime-check: ${mismatches.length} mismatch(es) found`);
     res.json(mismatches);
   } catch (err) {

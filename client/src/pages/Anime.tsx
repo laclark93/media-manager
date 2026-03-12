@@ -280,6 +280,10 @@ export function Anime() {
   const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime' && i.hasMissing);
   const visibleWronglyTagged = allWronglyTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}`));
   const ignoredWronglyTagged = allWronglyTagged.filter(i => ignoredKeys.has(`${i.service}-${i.id}`));
+  // "wrong-directory": anime not in anime root folder
+  const allWrongDir = items.filter(i => i.mismatchType === 'wrong-directory');
+  const visibleWrongDir = allWrongDir.filter(i => !ignoredKeys.has(`${i.service}-${i.id}-dir`));
+  const ignoredWrongDir = allWrongDir.filter(i => ignoredKeys.has(`${i.service}-${i.id}-dir`));
 
   if (loading) return <div className="page"><div className="loading">Checking anime tags...</div></div>;
 
@@ -314,6 +318,21 @@ export function Anime() {
         />
       )}
 
+      {(visibleWrongDir.length > 0 || ignoredWrongDir.length > 0) && (
+        <MismatchSection
+          title="Anime in wrong directory"
+          description="These are marked as anime (by tag or series type) but are stored outside the anime root folder."
+          items={visibleWrongDir}
+          ignoredItems={ignoredWrongDir}
+          sonarrUrl={sonarrUrl}
+          radarrUrl={radarrUrl}
+          loading={loading}
+          onRefresh={refresh}
+          onIgnore={(key) => ignoreItem(key + '-dir')}
+          onRestore={(key) => restoreItem(key + '-dir')}
+        />
+      )}
+
       <SubtitleSection
         items={visibleSubItems}
         ignoredItems={ignoredSubItems}
@@ -327,7 +346,7 @@ export function Anime() {
         onRestore={restoreSubItem}
       />
 
-      {notTagged.length === 0 && visibleWronglyTagged.length === 0 && visibleSubItems.length === 0 && !loading && !subLoading && (
+      {notTagged.length === 0 && visibleWronglyTagged.length === 0 && visibleWrongDir.length === 0 && visibleSubItems.length === 0 && !loading && !subLoading && (
         <div className="empty-state">
           <h2>All Good</h2>
           <p>No anime tag mismatches or missing English subtitles found.</p>
