@@ -275,7 +275,9 @@ export function Anime() {
   const subItemKeys = new Set(subItems.map(i => `${i.service}-${i.id}`));
 
   // "anime-not-tagged": show if has missing episodes/files OR has subtitle issues
-  const notTagged = items.filter(i => i.mismatchType === 'anime-not-tagged' && (i.hasMissing || subItemKeys.has(`${i.service}-${i.id}`)));
+  const allNotTagged = items.filter(i => i.mismatchType === 'anime-not-tagged' && (i.hasMissing || subItemKeys.has(`${i.service}-${i.id}`)));
+  const visibleNotTagged = allNotTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}-tag`));
+  const ignoredNotTagged = allNotTagged.filter(i => ignoredKeys.has(`${i.service}-${i.id}-tag`));
   // "tagged-not-anime": only show if has missing episodes/files
   const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime' && i.hasMissing);
   const visibleWronglyTagged = allWronglyTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}`));
@@ -292,15 +294,18 @@ export function Anime() {
       {error && <div className="error-banner">{error}</div>}
       <h2 className="anime-page__heading">Anime Check</h2>
 
-      {notTagged.length > 0 && (
+      {(visibleNotTagged.length > 0 || ignoredNotTagged.length > 0) && (
         <MismatchSection
           title={'Anime missing the "anime" tag'}
           description={"These have missing episodes/files and are set as anime in Sonarr (series type = anime) or detected as Japanese animation in Radarr, but don't have the \"anime\" tag applied."}
-          items={notTagged}
+          items={visibleNotTagged}
+          ignoredItems={ignoredNotTagged}
           sonarrUrl={sonarrUrl}
           radarrUrl={radarrUrl}
           loading={loading}
           onRefresh={refresh}
+          onIgnore={(key) => ignoreItem(key + '-tag')}
+          onRestore={(key) => restoreItem(key + '-tag')}
         />
       )}
       {(visibleWronglyTagged.length > 0 || ignoredWronglyTagged.length > 0) && (
@@ -346,7 +351,7 @@ export function Anime() {
         onRestore={restoreSubItem}
       />
 
-      {notTagged.length === 0 && visibleWronglyTagged.length === 0 && visibleWrongDir.length === 0 && visibleSubItems.length === 0 && !loading && !subLoading && (
+      {visibleNotTagged.length === 0 && visibleWronglyTagged.length === 0 && visibleWrongDir.length === 0 && visibleSubItems.length === 0 && !loading && !subLoading && (
         <div className="empty-state">
           <h2>All Good</h2>
           <p>No anime tag mismatches or missing English subtitles found.</p>
