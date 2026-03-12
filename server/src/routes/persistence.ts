@@ -65,12 +65,12 @@ router.get('/history', (_req, res) => {
 });
 
 router.post('/history', (req, res) => {
-  const { shows, movies } = req.body;
+  const { shows, movies, episodes } = req.body;
   if (typeof shows !== 'number' || typeof movies !== 'number') {
-    res.status(400).json({ error: 'Expected { shows: number, movies: number }' });
+    res.status(400).json({ error: 'Expected { shows: number, movies: number, episodes?: number }' });
     return;
   }
-  const history = appendHistory(shows, movies);
+  const history = appendHistory(shows, movies, typeof episodes === 'number' ? episodes : undefined);
   res.json(history);
 });
 

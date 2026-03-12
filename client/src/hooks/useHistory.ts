@@ -5,6 +5,7 @@ export interface HistorySnapshot {
   timestamp: string;
   shows: number;
   movies: number;
+  episodes?: number;
 }
 
 export function useHistory() {
@@ -17,13 +18,13 @@ export function useHistory() {
       .catch(() => {});
   }, []);
 
-  const record = useCallback(async (shows: number, movies: number) => {
+  const record = useCallback(async (shows: number, movies: number, episodes: number) => {
     if (recorded.current) return;
     recorded.current = true;
     try {
       const updated = await fetchApi<HistorySnapshot[]>('/api/persistence/history', {
         method: 'POST',
-        body: JSON.stringify({ shows, movies }),
+        body: JSON.stringify({ shows, movies, episodes }),
       });
       setHistory(updated);
     } catch {

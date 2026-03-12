@@ -70,6 +70,7 @@ export interface HistorySnapshot {
   timestamp: string;
   shows: number;
   movies: number;
+  episodes?: number;
 }
 
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
@@ -86,7 +87,7 @@ export function readHistory(): HistorySnapshot[] {
   return [];
 }
 
-export function appendHistory(shows: number, movies: number): HistorySnapshot[] {
+export function appendHistory(shows: number, movies: number, episodes?: number): HistorySnapshot[] {
   ensureDataDir();
   const history = readHistory();
   const now = new Date();
@@ -95,7 +96,9 @@ export function appendHistory(shows: number, movies: number): HistorySnapshot[] 
     const last = new Date(history[history.length - 1].timestamp).getTime();
     if (now.getTime() - last < ONE_HOUR) return history;
   }
-  history.push({ timestamp: now.toISOString(), shows, movies });
+  const entry: HistorySnapshot = { timestamp: now.toISOString(), shows, movies };
+  if (episodes !== undefined) entry.episodes = episodes;
+  history.push(entry);
   // Keep max 1 year of hourly data (~8760 entries)
   const trimmed = history.slice(-8760);
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(trimmed, null, 2));

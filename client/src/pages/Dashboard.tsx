@@ -85,9 +85,9 @@ export function Dashboard() {
   // Guard: only record when raw arrays are populated (avoids recording 0 when API returned empty/failed)
   useEffect(() => {
     if (!showsLoading && !moviesLoading && series.length > 0 && movies.length > 0) {
-      record(showsWithMissing.length, missingMovies.length);
+      record(showsWithMissing.length, missingMovies.length, totalMissingEpisodes);
     }
-  }, [showsLoading, moviesLoading, series.length, movies.length, showsWithMissing.length, missingMovies.length, record]);
+  }, [showsLoading, moviesLoading, series.length, movies.length, showsWithMissing.length, missingMovies.length, totalMissingEpisodes, record]);
 
   const allLoading = showsLoading && moviesLoading && issuesLoading && subsLoading;
 
@@ -204,6 +204,9 @@ export function Dashboard() {
         <>
           <HistoryChart data={history} valueKey="shows" title="Missing Shows Over Time" color="var(--accent)" />
           <HistoryChart data={history} valueKey="movies" title="Missing Movies Over Time" color="var(--warning)" />
+          {history.some(h => h.episodes !== undefined) && (
+            <HistoryChart data={history} valueKey="episodes" title="Missing Episodes Over Time" color="var(--danger, #e74c3c)" />
+          )}
         </>
       )}
     </div>
@@ -215,19 +218,79 @@ const CHART_W = 800;
 const CHART_H = 260;
 const PAD = { top: 20, right: 30, bottom: 50, left: 50 };
 
+type Granularity = 'hourly' | 'daily' | 'monthly';
+
+function bucketKey(d: Date, g: Granularity): string {
+  if (g === 'hourly') return d.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+  if (g === 'daily') return d.toISOString().slice(0, 10);  // YYYY-MM-DD
+  return d.toISOString().slice(0, 7);                       // YYYY-MM
+}
+
+function bucketLabel(key: string, g: Granularity): string {
+  if (g === 'monthly') {
+    const [y, m] = key.split('-');
+    return `${parseInt(m)}/${y}`;
+  }
+  const d = new Date(g === 'hourly' ? key + ':00:00Z' : key + 'T00:00:00Z');
+  if (g === 'daily') return `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:00`;
+}
+
+function aggregateData(
+  raw: HistorySnapshot[],
+  valueKey: 'shows' | 'movies' | 'episodes',
+  granularity: Granularity,
+): { ts: number; value: number; date: Date; label: string }[] {
+  if (granularity === 'hourly') {
+    return raw
+      .filter(d => d[valueKey] !== undefined)
+      .map(d => {
+        const date = new Date(d.timestamp);
+        return { ts: date.getTime(), value: d[valueKey]!, date, label: '' };
+      });
+  }
+
+  const buckets = new Map<string, { values: number[]; ts: number }>();
+  for (const d of raw) {
+    const v = d[valueKey];
+    if (v === undefined) continue;
+    const date = new Date(d.timestamp);
+    const key = bucketKey(date, granularity);
+    const existing = buckets.get(key);
+    if (existing) {
+      existing.values.push(v);
+      existing.ts = Math.max(existing.ts, date.getTime());
+    } else {
+      buckets.set(key, { values: [v], ts: date.getTime() });
+    }
+  }
+
+  return Array.from(buckets.entries()).map(([key, { values, ts }]) => {
+    // Use the last value in each bucket (most recent snapshot)
+    const value = values[values.length - 1];
+    return { ts, value, date: new Date(ts), label: bucketLabel(key, granularity) };
+  });
+}
+
 function HistoryChart({ data, valueKey, title, color }: {
   data: HistorySnapshot[];
-  valueKey: 'shows' | 'movies';
+  valueKey: 'shows' | 'movies' | 'episodes';
   title: string;
   color: string;
 }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string; count: number } | null>(null);
+  const [granularity, setGranularity] = useState<Granularity>(() => {
+    const saved = localStorage.getItem(`chart.granularity.${valueKey}`);
+    if (saved && ['hourly', 'daily', 'monthly'].includes(saved)) return saved as Granularity;
+    return 'daily';
+  });
 
-  const points = useMemo(() => data.map(d => ({
-    ts: new Date(d.timestamp).getTime(),
-    value: d[valueKey],
-    date: new Date(d.timestamp),
-  })), [data, valueKey]);
+  const setAndSaveGranularity = (g: Granularity) => {
+    setGranularity(g);
+    localStorage.setItem(`chart.granularity.${valueKey}`, g);
+  };
+
+  const points = useMemo(() => aggregateData(data, valueKey, granularity), [data, valueKey, granularity]);
 
   if (points.length < 2) return null;
 
@@ -237,7 +300,6 @@ function HistoryChart({ data, valueKey, title, color }: {
   const maxVal = Math.max(...values, 1);
   const minVal = Math.min(...values);
   const valRange = Math.max(maxVal - minVal, 1);
-  // Add 10% padding above
   const yMax = maxVal + Math.ceil(valRange * 0.1);
   const yMin = Math.max(0, minVal - Math.ceil(valRange * 0.1));
   const yRange = yMax - yMin || 1;
@@ -259,35 +321,49 @@ function HistoryChart({ data, valueKey, title, color }: {
   for (let v = yMin; v <= yMax; v += step) yTicks.push(v);
   if (yTicks[yTicks.length - 1] < yMax) yTicks.push(yMax);
 
-  // X-axis labels (pick ~6 evenly spaced)
+  // X-axis labels
   const xLabelCount = Math.min(points.length, 6);
   const xLabels: { ts: number; label: string }[] = [];
   for (let i = 0; i < xLabelCount; i++) {
     const idx = Math.round((i / (xLabelCount - 1)) * (points.length - 1));
-    const d = points[idx].date;
-    xLabels.push({
-      ts: points[idx].ts,
-      label: `${d.getMonth() + 1}/${d.getDate()}`,
-    });
+    const p = points[idx];
+    const d = p.date;
+    let label: string;
+    if (granularity === 'monthly') label = `${d.getMonth() + 1}/${d.getFullYear()}`;
+    else if (granularity === 'daily') label = `${d.getMonth() + 1}/${d.getDate()}`;
+    else label = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:00`;
+    xLabels.push({ ts: p.ts, label });
   }
 
-  const formatTooltipDate = (d: Date) =>
-    `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  const formatTooltipDate = (d: Date) => {
+    if (granularity === 'monthly') return `${d.getMonth() + 1}/${d.getFullYear()}`;
+    if (granularity === 'daily') return `${d.getMonth() + 1}/${d.getDate()}`;
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="dashboard__chart">
-      <div className="dashboard__section-title">{title}</div>
+      <div className="dashboard__chart-header">
+        <div className="dashboard__section-title">{title}</div>
+        <div className="dashboard__granularity">
+          {(['hourly', 'daily', 'monthly'] as Granularity[]).map(g => (
+            <button
+              key={g}
+              className={`dashboard__granularity-btn${granularity === g ? ' dashboard__granularity-btn--active' : ''}`}
+              onClick={() => setAndSaveGranularity(g)}
+            >
+              {g.charAt(0).toUpperCase() + g.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="dashboard__chart-wrap" style={{ position: 'relative' }}>
         <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="dashboard__chart-svg">
-          {/* Grid lines */}
           {yTicks.map(v => (
             <line key={v} x1={PAD.left} y1={yScale(v)} x2={CHART_W - PAD.right} y2={yScale(v)} className="dashboard__chart-grid" />
           ))}
-          {/* Area */}
           <path d={areaPath} fill={color} opacity={0.12} />
-          {/* Line */}
           <path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" />
-          {/* Data points */}
           {points.map((p, i) => (
             <circle
               key={i}
@@ -300,11 +376,9 @@ function HistoryChart({ data, valueKey, title, color }: {
               onMouseLeave={() => setTooltip(null)}
             />
           ))}
-          {/* X-axis labels */}
           {xLabels.map((l, i) => (
             <text key={i} x={xScale(l.ts)} y={CHART_H - 8} textAnchor="middle" className="dashboard__chart-axis">{l.label}</text>
           ))}
-          {/* Y-axis labels */}
           {yTicks.map(v => (
             <text key={v} x={PAD.left - 8} y={yScale(v) + 4} textAnchor="end" className="dashboard__chart-axis">{v}</text>
           ))}
