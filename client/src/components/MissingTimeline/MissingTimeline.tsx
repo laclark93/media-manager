@@ -55,7 +55,7 @@ function filterEpochDates(entries: MissingTimelineEntry[]): MissingTimelineEntry
 /* ────────────────────────────────────────────────────────── */
 /*  Summary Stats                                            */
 /* ────────────────────────────────────────────────────────── */
-function SummaryStats({ entries }: { entries: MissingTimelineEntry[] }) {
+function SummaryStats({ entries, totalCount }: { entries: MissingTimelineEntry[]; totalCount: number }) {
   const stats = useMemo(() => {
     const uniqueShows = new Set(entries.map(e => e.seriesId)).size;
     const now = new Date();
@@ -65,8 +65,8 @@ function SummaryStats({ entries }: { entries: MissingTimelineEntry[] }) {
     const sorted = [...entries].sort((a, b) => a.airDateUtc.localeCompare(b.airDateUtc));
     const medianDate = new Date(sorted[Math.floor(sorted.length / 2)].airDateUtc);
     const medianLabel = `${MONTH_NAMES[medianDate.getMonth()]} ${medianDate.getFullYear()}`;
-    return { total: entries.length, uniqueShows, recentCount, olderCount, medianLabel };
-  }, [entries]);
+    return { total: totalCount, uniqueShows, recentCount, olderCount, medianLabel };
+  }, [entries, totalCount]);
 
   return (
     <div className="timeline__summary">
@@ -800,7 +800,7 @@ export function MissingTimeline({ getMissingTimeline }: MissingTimelineProps) {
 
   return (
     <div className="missing-timeline-root">
-      <SummaryStats entries={entries} />
+      <SummaryStats entries={entries} totalCount={rawEntries?.length ?? entries.length} />
 
       <div className="timeline-views">
         {VIEW_LABELS.map(v => (
