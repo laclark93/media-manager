@@ -82,11 +82,12 @@ export function Dashboard() {
   );
 
   // Record history snapshot when data is available
+  // Guard: only record when raw arrays are populated (avoids recording 0 when API returned empty/failed)
   useEffect(() => {
-    if (!showsLoading && !moviesLoading) {
+    if (!showsLoading && !moviesLoading && series.length > 0 && movies.length > 0) {
       record(showsWithMissing.length, missingMovies.length);
     }
-  }, [showsLoading, moviesLoading, showsWithMissing.length, missingMovies.length, record]);
+  }, [showsLoading, moviesLoading, series.length, movies.length, showsWithMissing.length, missingMovies.length, record]);
 
   const allLoading = showsLoading && moviesLoading && issuesLoading && subsLoading;
 
