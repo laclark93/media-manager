@@ -15,9 +15,9 @@ export function useJellyseerr() {
 
   const fetchData = useCallback(async (force: boolean) => {
     if (!force && !cache.isStale()) return;
-    const showSpinner = force || !cache.get();
-    if (showSpinner) setLoading(true);
-    if (!showSpinner) setBgLoading(true);
+    const firstLoad = !cache.get();
+    if (firstLoad) setLoading(true);
+    else setBgLoading(true);
     setError(null);
     const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
     try {
@@ -25,9 +25,9 @@ export function useJellyseerr() {
       cache.set(data);
       setIssues(data);
     } catch (err) {
-      if (showSpinner) setError(err instanceof Error ? err.message : 'Failed to fetch issues');
+      if (firstLoad) setError(err instanceof Error ? err.message : 'Failed to fetch issues');
     } finally {
-      if (showSpinner) setLoading(false);
+      if (firstLoad) setLoading(false);
       setBgLoading(false);
     }
   }, [setBgLoading]);

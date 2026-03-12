@@ -17,9 +17,9 @@ export function useEarlyFiles() {
 
   const fetchData = useCallback(async (force: boolean) => {
     if (!force && !episodesCache.isStale() && !moviesCache.isStale()) return;
-    const showSpinner = force || (!episodesCache.get() && !moviesCache.get());
-    if (showSpinner) setLoading(true);
-    if (!showSpinner) setBgLoading(true);
+    const firstLoad = !episodesCache.get() && !moviesCache.get();
+    if (firstLoad) setLoading(true);
+    else setBgLoading(true);
     if (force) setRefreshing(true);
     setError(null);
     const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
@@ -37,12 +37,12 @@ export function useEarlyFiles() {
         setMovies(radarr.value);
       }
       if (sonarr.status === 'rejected' && radarr.status === 'rejected') {
-        if (showSpinner) setError('Failed to fetch early files data');
+        if (firstLoad) setError('Failed to fetch early files data');
       }
     } catch (err) {
-      if (showSpinner) setError(err instanceof Error ? err.message : 'Failed to fetch early files data');
+      if (firstLoad) setError(err instanceof Error ? err.message : 'Failed to fetch early files data');
     } finally {
-      if (showSpinner) setLoading(false);
+      if (firstLoad) setLoading(false);
       setBgLoading(false);
       setRefreshing(false);
     }
