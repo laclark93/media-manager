@@ -4,7 +4,7 @@ import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { JellyseerrIssue } from '../types/jellyseerr';
 import { useSetBackgroundLoading } from './useBackgroundLoading';
 
-const cache = createCache<JellyseerrIssue[]>();
+const cache = createCache<JellyseerrIssue[]>('mm:jellyseerr');
 
 export function useJellyseerr() {
   const cached = cache.get();

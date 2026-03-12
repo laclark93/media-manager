@@ -4,7 +4,7 @@ import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { SubtitleMissing } from '../types/anime';
 import { useSetBackgroundLoading } from './useBackgroundLoading';
 
-const cache = createCache<SubtitleMissing[]>();
+const cache = createCache<SubtitleMissing[]>('mm:subtitleCheck');
 
 export function useSubtitleCheck() {
   const cached = cache.get();

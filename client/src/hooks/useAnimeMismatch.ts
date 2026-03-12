@@ -4,7 +4,7 @@ import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { AnimeMismatch } from '../types/anime';
 import { useSetBackgroundLoading } from './useBackgroundLoading';
 
-const cache = createCache<AnimeMismatch[]>();
+const cache = createCache<AnimeMismatch[]>('mm:animeMismatch');
 
 export function useAnimeMismatch() {
   const cached = cache.get();

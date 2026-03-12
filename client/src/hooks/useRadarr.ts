@@ -4,7 +4,7 @@ import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { RadarrMovie } from '../types/radarr';
 import { useSetBackgroundLoading } from './useBackgroundLoading';
 
-const cache = createCache<RadarrMovie[]>();
+const cache = createCache<RadarrMovie[]>('mm:radarr');
 
 export function useRadarr() {
   const cached = cache.get();

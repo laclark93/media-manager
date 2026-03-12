@@ -4,7 +4,7 @@ import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { SonarrSeries, SonarrEpisode, MissingTimelineEntry } from '../types/sonarr';
 import { useSetBackgroundLoading } from './useBackgroundLoading';
 
-const cache = createCache<SonarrSeries[]>();
+const cache = createCache<SonarrSeries[]>('mm:sonarr');
 
 export function useSonarr() {
   const cached = cache.get();

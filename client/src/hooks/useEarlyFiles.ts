@@ -4,8 +4,8 @@ import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { EarlySeriesItem, EarlyMovieItem } from '../types/early';
 import { useSetBackgroundLoading } from './useBackgroundLoading';
 
-const episodesCache = createCache<EarlySeriesItem[]>();
-const moviesCache = createCache<EarlyMovieItem[]>();
+const episodesCache = createCache<EarlySeriesItem[]>('mm:earlyEpisodes');
+const moviesCache = createCache<EarlyMovieItem[]>('mm:earlyMovies');
 
 export function useEarlyFiles() {
   const [episodes, setEpisodes] = useState<EarlySeriesItem[]>(episodesCache.get()?.data ?? []);
