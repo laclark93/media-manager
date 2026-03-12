@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '../utils/api';
 import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { AnimeMismatch } from '../types/anime';
+import { useSetBackgroundLoading } from './useBackgroundLoading';
 
 const cache = createCache<AnimeMismatch[]>();
 
@@ -10,11 +11,13 @@ export function useAnimeMismatch() {
   const [items, setItems] = useState<AnimeMismatch[]>(cached?.data ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  const setBgLoading = useSetBackgroundLoading('animeMismatch');
 
   const fetchData = useCallback(async (force: boolean) => {
     if (!force && !cache.isStale()) return;
     const showSpinner = force || !cache.get();
     if (showSpinner) setLoading(true);
+    if (!showSpinner) setBgLoading(true);
     setError(null);
     const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
     try {
@@ -35,8 +38,9 @@ export function useAnimeMismatch() {
       if (showSpinner) setError(err instanceof Error ? err.message : 'Failed to fetch anime check data');
     } finally {
       if (showSpinner) setLoading(false);
+      setBgLoading(false);
     }
-  }, []);
+  }, [setBgLoading]);
 
   const refresh = useCallback(() => fetchData(true), [fetchData]);
 

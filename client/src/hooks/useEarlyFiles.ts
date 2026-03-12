@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '../utils/api';
 import { createCache, REFRESH_INTERVAL } from '../utils/cache';
 import { EarlySeriesItem, EarlyMovieItem } from '../types/early';
+import { useSetBackgroundLoading } from './useBackgroundLoading';
 
 const episodesCache = createCache<EarlySeriesItem[]>();
 const moviesCache = createCache<EarlyMovieItem[]>();
@@ -12,11 +13,13 @@ export function useEarlyFiles() {
   const [loading, setLoading] = useState(!episodesCache.get() && !moviesCache.get());
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const setBgLoading = useSetBackgroundLoading('earlyFiles');
 
   const fetchData = useCallback(async (force: boolean) => {
     if (!force && !episodesCache.isStale() && !moviesCache.isStale()) return;
     const showSpinner = force || (!episodesCache.get() && !moviesCache.get());
     if (showSpinner) setLoading(true);
+    if (!showSpinner) setBgLoading(true);
     if (force) setRefreshing(true);
     setError(null);
     const opts = force ? { headers: { 'X-Manual-Refresh': '1' } } : undefined;
@@ -40,9 +43,10 @@ export function useEarlyFiles() {
       if (showSpinner) setError(err instanceof Error ? err.message : 'Failed to fetch early files data');
     } finally {
       if (showSpinner) setLoading(false);
+      setBgLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [setBgLoading]);
 
   const refresh = useCallback(() => fetchData(true), [fetchData]);
 
