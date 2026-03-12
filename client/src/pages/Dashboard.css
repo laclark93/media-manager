@@ -169,6 +169,58 @@
   flex-shrink: 0;
 }
 
+/* ── History Charts ─────────────────────────────────────── */
+.dashboard__chart {
+  margin-bottom: 32px;
+}
+
+.dashboard__chart-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.dashboard__chart-svg {
+  width: 100%;
+  height: auto;
+}
+
+.dashboard__chart-grid {
+  stroke: var(--border);
+  stroke-width: 0.5;
+  stroke-dasharray: 4 4;
+}
+
+.dashboard__chart-axis {
+  font-size: 11px;
+  fill: var(--text-muted);
+}
+
+.dashboard__chart-dot {
+  cursor: pointer;
+  transition: r 0.15s;
+}
+
+.dashboard__chart-dot:hover {
+  r: 6;
+}
+
+.dashboard__chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+
 /* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .dashboard {

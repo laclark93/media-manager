@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readIgnored, writeIgnoredMismatches, writeIgnoredSubtitles, readLog, writeLog, SerializedLogEntry } from '../persistence.js';
+import { readIgnored, writeIgnoredMismatches, writeIgnoredSubtitles, readLog, writeLog, SerializedLogEntry, readHistory, appendHistory } from '../persistence.js';
 import * as log from '../logger.js';
 
 const router = Router();
@@ -56,6 +56,22 @@ router.put('/log', (req, res) => {
   }
   writeLog(entries);
   res.json({ success: true });
+});
+
+// --- History snapshots ---
+
+router.get('/history', (_req, res) => {
+  res.json(readHistory());
+});
+
+router.post('/history', (req, res) => {
+  const { shows, movies } = req.body;
+  if (typeof shows !== 'number' || typeof movies !== 'number') {
+    res.status(400).json({ error: 'Expected { shows: number, movies: number }' });
+    return;
+  }
+  const history = appendHistory(shows, movies);
+  res.json(history);
 });
 
 export default router;

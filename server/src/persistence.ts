@@ -63,3 +63,41 @@ export function writeLog(entries: SerializedLogEntry[]): void {
   ensureDataDir();
   fs.writeFileSync(LOG_FILE, JSON.stringify(entries.slice(0, 100), null, 2));
 }
+
+// --- History snapshots ---
+
+export interface HistorySnapshot {
+  timestamp: string;
+  shows: number;
+  movies: number;
+}
+
+const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
+const ONE_HOUR = 60 * 60 * 1000;
+
+export function readHistory(): HistorySnapshot[] {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
+    }
+  } catch {
+    // Corrupt file, return empty
+  }
+  return [];
+}
+
+export function appendHistory(shows: number, movies: number): HistorySnapshot[] {
+  ensureDataDir();
+  const history = readHistory();
+  const now = new Date();
+  // Deduplicate: skip if last snapshot was less than 1 hour ago
+  if (history.length > 0) {
+    const last = new Date(history[history.length - 1].timestamp).getTime();
+    if (now.getTime() - last < ONE_HOUR) return history;
+  }
+  history.push({ timestamp: now.toISOString(), shows, movies });
+  // Keep max 1 year of hourly data (~8760 entries)
+  const trimmed = history.slice(-8760);
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(trimmed, null, 2));
+  return trimmed;
+}
