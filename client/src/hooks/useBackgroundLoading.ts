@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useRef, useSyncExternalStore } from 'react';
+import { createContext, useContext, useCallback, useSyncExternalStore } from 'react';
 
 interface BackgroundLoadingStore {
   subscribe(cb: () => void): () => void;
