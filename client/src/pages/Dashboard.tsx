@@ -78,6 +78,12 @@ export function Dashboard() {
     </div>
   );
 
+  const allLoading = showsLoading && moviesLoading && issuesLoading && subsLoading;
+
+  if (allLoading) {
+    return <div className="page"><div className="loading">Loading dashboard</div></div>;
+  }
+
   return (
     <div className="dashboard page">
       <h1 className="dashboard__title">Dashboard</h1>
