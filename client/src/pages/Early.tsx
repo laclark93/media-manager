@@ -40,7 +40,7 @@ function EpisodeSeriesCard({
 }: {
   item: EarlySeriesItem;
   deletingFileId: number | null;
-  onDelete: (fileId: number) => void;
+  onDelete: (fileId: number, instanceUrl?: string) => void;
   sonarrUrl: string;
 }) {
   const seriesLink = sonarrUrl ? `${sonarrUrl.replace(/\/$/, '')}/series/${item.slug}` : undefined;
@@ -71,7 +71,7 @@ function EpisodeSeriesCard({
               <span className="early-episode-row__date">airs {formatAirDate(ep.airDateUtc)}</span>
               <button
                 className="early-episode-row__delete"
-                onClick={() => onDelete(ep.fileId)}
+                onClick={() => onDelete(ep.fileId, item.instanceUrl)}
                 disabled={deletingFileId === ep.fileId}
                 title="Delete file from Sonarr"
               >
@@ -93,7 +93,7 @@ function MovieCard({
 }: {
   item: EarlyMovieItem;
   deletingFileId: number | null;
-  onDelete: (fileId: number) => void;
+  onDelete: (fileId: number, instanceUrl?: string) => void;
   radarrUrl: string;
 }) {
   const movieLink = radarrUrl ? `${radarrUrl.replace(/\/$/, '')}/movie/${item.slug}` : undefined;
@@ -132,7 +132,7 @@ function MovieCard({
         {item.fileId != null && (
           <button
             className="early-item__delete-movie"
-            onClick={() => onDelete(item.fileId!)}
+            onClick={() => onDelete(item.fileId!, item.instanceUrl)}
             disabled={deletingFileId === item.fileId}
             title="Delete file from Radarr"
           >
@@ -158,10 +158,11 @@ export function Early() {
 
   const visibleMovies = movies.filter(m => m.fileId == null || !deletedFileIds.has(m.fileId));
 
-  const handleDeleteEpisodeFile = async (fileId: number) => {
+  const handleDeleteEpisodeFile = async (fileId: number, instanceUrl?: string) => {
     setDeletingFileId(fileId);
     try {
-      await fetchApi(`/api/sonarr/episode-file/${fileId}`, { method: 'DELETE' });
+      const qs = instanceUrl ? `?instanceUrl=${encodeURIComponent(instanceUrl)}` : '';
+      await fetchApi(`/api/sonarr/episode-file/${fileId}${qs}`, { method: 'DELETE' });
       setDeletedFileIds(prev => new Set([...prev, fileId]));
     } catch {
       // ignore — file stays visible
@@ -169,10 +170,11 @@ export function Early() {
     setDeletingFileId(null);
   };
 
-  const handleDeleteMovieFile = async (fileId: number) => {
+  const handleDeleteMovieFile = async (fileId: number, instanceUrl?: string) => {
     setDeletingFileId(fileId);
     try {
-      await fetchApi(`/api/radarr/movie-file/${fileId}`, { method: 'DELETE' });
+      const qs = instanceUrl ? `?instanceUrl=${encodeURIComponent(instanceUrl)}` : '';
+      await fetchApi(`/api/radarr/movie-file/${fileId}${qs}`, { method: 'DELETE' });
       setDeletedFileIds(prev => new Set([...prev, fileId]));
     } catch {
       // ignore — file stays visible

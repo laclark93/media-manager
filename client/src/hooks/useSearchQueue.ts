@@ -4,6 +4,7 @@ export interface SearchQueueItem {
   id: number;
   title: string;
   type: 'show' | 'movie';
+  instanceUrl?: string;
 }
 
 export interface SearchQueueState {
@@ -17,7 +18,7 @@ interface SearchQueueContextValue {
   state: SearchQueueState;
   startSearch: (
     items: SearchQueueItem[],
-    searchFn: (id: number) => Promise<void>,
+    searchFn: (id: number, instanceUrl?: string) => Promise<void>,
     logEntryId: number,
     onDone: (count: number) => void,
     onError: () => void,
@@ -35,7 +36,7 @@ export function useSearchQueueState(): SearchQueueContextValue {
   const startSearch = useCallback(
     (
       items: SearchQueueItem[],
-      searchFn: (id: number) => Promise<void>,
+      searchFn: (id: number, instanceUrl?: string) => Promise<void>,
       _logEntryId: number,
       onDone: (count: number) => void,
       onError: () => void,
@@ -49,7 +50,7 @@ export function useSearchQueueState(): SearchQueueContextValue {
         try {
           for (const item of items) {
             if (cancelRef.current) break;
-            await searchFn(item.id);
+            await searchFn(item.id, item.instanceUrl);
             completed++;
             setState(prev => ({ ...prev, completed }));
           }

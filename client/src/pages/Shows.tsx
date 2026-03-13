@@ -105,7 +105,7 @@ export function Shows() {
             onSearchAll={async () => {
               const eid = addEntry('Search All Shows', `${filtered.length} shows`);
               startSearch(
-                filtered.map((s: ShowItem) => ({ id: s.id, title: s.title, type: 'show' as const })),
+                filtered.map((s: ShowItem) => ({ id: s.id, title: s.title, type: 'show' as const, instanceUrl: s.instanceUrl })),
                 searchSeries,
                 eid,
                 (count: number) => updateEntry(eid, 'success', `${count} show(s) queued`),
@@ -145,7 +145,7 @@ export function Shows() {
                   onCardClick={() => setSelectedSeriesId(item.id)}
                   onSearchAll={async () => {
                     const eid = addEntry('Search All', item.title);
-                    try { await searchSeries(item.id); updateEntry(eid, 'success', 'Queued'); }
+                    try { await searchSeries(item.id, item.instanceUrl); updateEntry(eid, 'success', 'Queued'); }
                     catch { updateEntry(eid, 'error', 'Failed'); }
                   }}
                 />
@@ -166,12 +166,12 @@ export function Shows() {
           getMissingEpisodes={getMissingEpisodes}
           searchEpisodes={async (episodeIds) => {
             const eid = addEntry('Search Episodes', selectedSeries.title);
-            try { await searchEpisodes(episodeIds); updateEntry(eid, 'success', `${episodeIds.length} ep(s) queued`); }
+            try { await searchEpisodes(episodeIds, selectedSeries.instanceUrl); updateEntry(eid, 'success', `${episodeIds.length} ep(s) queued`); }
             catch { updateEntry(eid, 'error', 'Failed'); }
           }}
           searchSeries={async (seriesId) => {
             const eid = addEntry('Search All', selectedSeries.title);
-            try { await searchSeries(seriesId); updateEntry(eid, 'success', 'Queued'); }
+            try { await searchSeries(seriesId, selectedSeries.instanceUrl); updateEntry(eid, 'success', 'Queued'); }
             catch { updateEntry(eid, 'error', 'Failed'); }
           }}
           onClose={() => setSelectedSeriesId(null)}

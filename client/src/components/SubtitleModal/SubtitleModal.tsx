@@ -86,6 +86,7 @@ function formatHistoryDate(dateStr: string): string {
 function EpisodeRow({
   ep,
   seriesId,
+  instanceUrl,
   plexUrl,
   plexSubtitles,
   errMsg: parentErr,
@@ -93,6 +94,7 @@ function EpisodeRow({
 }: {
   ep: AffectedEpisode;
   seriesId: number;
+  instanceUrl?: string;
   plexUrl?: string;
   plexSubtitles?: SubtitleStream[];
   errMsg?: string;
@@ -115,7 +117,7 @@ function EpisodeRow({
     try {
       await fetchApi('/api/sonarr/mark-failed', {
         method: 'POST',
-        body: JSON.stringify({ seriesId, episodeFileId: ep.fileId, episodeId: ep.episodeId }),
+        body: JSON.stringify({ seriesId, episodeFileId: ep.fileId, episodeId: ep.episodeId, instanceUrl }),
       });
       setState('done');
       onDone(ep.fileId);
@@ -207,10 +209,12 @@ function EpisodeRow({
 function MovieFileRow({
   fileId,
   movieId,
+  instanceUrl,
   onDone,
 }: {
   fileId: number;
   movieId: number;
+  instanceUrl?: string;
   onDone: (fileId: number) => void;
 }) {
   const [state, setState] = useState<ActionState>('idle');
@@ -222,7 +226,7 @@ function MovieFileRow({
     try {
       await fetchApi('/api/radarr/mark-failed', {
         method: 'POST',
-        body: JSON.stringify({ movieId, movieFileId: fileId }),
+        body: JSON.stringify({ movieId, movieFileId: fileId, instanceUrl }),
       });
       setState('done');
       onDone(fileId);
@@ -360,7 +364,7 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
         episodes.map(ep =>
           fetchApi('/api/sonarr/mark-failed', {
             method: 'POST',
-            body: JSON.stringify({ seriesId: item.id, episodeFileId: ep.fileId, episodeId: ep.episodeId }),
+            body: JSON.stringify({ seriesId: item.id, episodeFileId: ep.fileId, episodeId: ep.episodeId, instanceUrl: item.instanceUrl }),
           })
         )
       );
@@ -447,6 +451,7 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
                     key={ep.fileId}
                     ep={ep}
                     seriesId={item.id}
+                    instanceUrl={item.instanceUrl}
                     plexUrl={epKey ? (plexEpisodeUrls[epKey] ?? plexShowUrl ?? undefined) : (plexShowUrl ?? undefined)}
                     plexSubtitles={epKey ? plexSubtitleStreams[epKey] : undefined}
                     onDone={handleFileDone}
@@ -463,7 +468,7 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
             </div>
           )}
           {item.service === 'radarr' && movieFileIds.map(fileId => (
-            <MovieFileRow key={fileId} fileId={fileId} movieId={item.id} onDone={handleFileDone} />
+            <MovieFileRow key={fileId} fileId={fileId} movieId={item.id} instanceUrl={item.instanceUrl} onDone={handleFileDone} />
           ))}
 
           {/* All done */}

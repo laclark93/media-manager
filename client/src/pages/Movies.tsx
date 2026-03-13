@@ -73,7 +73,7 @@ export function Movies() {
         onSearchAll={async () => {
           const eid = addEntry('Search All Movies', `${filtered.length} movies`);
           startSearch(
-            filtered.map((m: MovieItem) => ({ id: m.id, title: m.title, type: 'movie' as const })),
+            filtered.map((m: MovieItem) => ({ id: m.id, title: m.title, type: 'movie' as const, instanceUrl: m.instanceUrl })),
             searchMovie,
             eid,
             (count: number) => updateEntry(eid, 'success', `${count} movie(s) queued`),
@@ -106,7 +106,7 @@ export function Movies() {
               radarrMovieId={item.id}
               onSearch={async () => {
                 const eid = addEntry('Search', item.title);
-                try { await searchMovie(item.id); updateEntry(eid, 'success', 'Queued'); }
+                try { await searchMovie(item.id, item.instanceUrl); updateEntry(eid, 'success', 'Queued'); }
                 catch { updateEntry(eid, 'error', 'Failed'); }
               }}
             />

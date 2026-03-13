@@ -55,8 +55,8 @@ router.put('/', (req, res) => {
     updated.sonarrInstances = (body.sonarrInstances as any[]).map((inst: any, idx: number) => ({
       name: inst.name || `Sonarr ${idx + 1}`,
       url: inst.url ?? '',
-      // Keep existing API key if new one is empty
-      apiKey: inst.apiKey || existing[idx]?.apiKey || '',
+      // Keep existing API key if new one is empty — match by URL first, fall back to index
+      apiKey: inst.apiKey || existing.find((e: any) => e.url === inst.url)?.apiKey || existing[idx]?.apiKey || '',
       animeTag: inst.animeTag ?? 'anime',
     }));
     // Clear legacy fields when using instances
@@ -75,7 +75,7 @@ router.put('/', (req, res) => {
     updated.radarrInstances = (body.radarrInstances as any[]).map((inst: any, idx: number) => ({
       name: inst.name || `Radarr ${idx + 1}`,
       url: inst.url ?? '',
-      apiKey: inst.apiKey || existing[idx]?.apiKey || '',
+      apiKey: inst.apiKey || existing.find((e: any) => e.url === inst.url)?.apiKey || existing[idx]?.apiKey || '',
       animeTag: inst.animeTag ?? 'anime',
     }));
     delete updated.radarrUrl;
