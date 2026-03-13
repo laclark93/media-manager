@@ -165,7 +165,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
 
 router.post('/add-anime-tag/:id', async (req: Request, res: Response) => {
   try {
-    const seriesId = parseInt(req.params.id, 10);
+    const seriesId = parseInt(req.params.id as string, 10);
     log.verbose(`Sonarr route: add-anime-tag for series ${seriesId}`);
     const config = getConfig();
     if (!config.sonarrUrl || !config.sonarrApiKey) {

@@ -114,7 +114,7 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
 
 router.post('/add-anime-tag/:id', async (req: Request, res: Response) => {
   try {
-    const movieId = parseInt(req.params.id, 10);
+    const movieId = parseInt(req.params.id as string, 10);
     log.verbose(`Radarr route: add-anime-tag for movie ${movieId}`);
     const config = getConfig();
     if (!config.radarrUrl || !config.radarrApiKey) {
