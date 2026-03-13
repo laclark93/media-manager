@@ -9,6 +9,7 @@ import { fetchApi } from '../utils/api';
 import { AnimeMismatchCard } from '../components/AnimeMismatchCard/AnimeMismatchCard';
 import { SubtitleMissingCard } from '../components/SubtitleMissingCard/SubtitleMissingCard';
 import { SubtitleModal } from '../components/SubtitleModal/SubtitleModal';
+import { LastUpdated } from '../components/LastUpdated/LastUpdated';
 import './Anime.css';
 
 interface MismatchSectionProps {
@@ -24,11 +25,12 @@ interface MismatchSectionProps {
   onRestore?: (key: string) => void;
   onAddTag?: (item: AnimeMismatch) => Promise<void>;
   defaultOpen?: boolean;
+  lastUpdated?: number | null;
 }
 
 function MismatchSection({
   title, description, items, ignoredItems, sonarrUrl, radarrUrl,
-  loading, onRefresh, onIgnore, onRestore, onAddTag, defaultOpen = true,
+  loading, onRefresh, onIgnore, onRestore, onAddTag, defaultOpen = true, lastUpdated,
 }: MismatchSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [showIgnored, setShowIgnored] = useState(false);
@@ -41,6 +43,7 @@ function MismatchSection({
           <span className="anime-page__count">{items.length}</span>
           <span className="anime-page__chevron">{open ? '▾' : '▸'}</span>
         </div>
+        <LastUpdated timestamp={lastUpdated ?? null} />
         <button
           className="anime-page__section-refresh"
           onClick={onRefresh}
@@ -117,9 +120,10 @@ interface SubtitleSectionProps {
   onIgnore?: (key: string) => void;
   onRestore?: (key: string) => void;
   defaultOpen?: boolean;
+  lastUpdated?: number | null;
 }
 
-function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfigured, loading, error, onRefresh, onIgnore, onRestore, defaultOpen = true }: SubtitleSectionProps) {
+function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfigured, loading, error, onRefresh, onIgnore, onRestore, defaultOpen = true, lastUpdated }: SubtitleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [sortBy, _setSortBy] = useState<SubtitleSort>(() => {
     const saved = localStorage.getItem('subtitles.sortBy');
@@ -177,6 +181,7 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
             </button>
           </div>
         )}
+        <LastUpdated timestamp={lastUpdated ?? null} />
         <button
           className="anime-page__section-refresh"
           onClick={onRefresh}
@@ -262,8 +267,8 @@ function SubtitleSection({ items, ignoredItems, sonarrUrl, radarrUrl, plexConfig
 }
 
 export function Anime() {
-  const { items, loading, error, refresh } = useAnimeMismatch();
-  const { items: subItems, loading: subLoading, error: subError, refresh: subRefresh } = useSubtitleCheck();
+  const { items, loading, error, refresh, lastUpdated: mismatchLastUpdated } = useAnimeMismatch();
+  const { items: subItems, loading: subLoading, error: subError, refresh: subRefresh, lastUpdated: subLastUpdated } = useSubtitleCheck();
   const { settings } = useSettings();
   const { ignoredKeys, ignoreItem, restoreItem } = useIgnoredMismatches();
   const { ignoredKeys: ignoredSubKeys, ignoreItem: ignoreSubItem, restoreItem: restoreSubItem } = useIgnoredSubtitles();
@@ -320,6 +325,7 @@ export function Anime() {
           onIgnore={(key) => ignoreItem(key + '-tag')}
           onRestore={(key) => restoreItem(key + '-tag')}
           onAddTag={handleAddTag}
+          lastUpdated={mismatchLastUpdated}
         />
       )}
       {(visibleWronglyTagged.length > 0 || ignoredWronglyTagged.length > 0) && (
@@ -334,6 +340,7 @@ export function Anime() {
           onRefresh={refresh}
           onIgnore={ignoreItem}
           onRestore={restoreItem}
+          lastUpdated={mismatchLastUpdated}
         />
       )}
 
@@ -349,6 +356,7 @@ export function Anime() {
           onRefresh={refresh}
           onIgnore={(key) => ignoreItem(key + '-dir')}
           onRestore={(key) => restoreItem(key + '-dir')}
+          lastUpdated={mismatchLastUpdated}
         />
       )}
 
@@ -363,6 +371,7 @@ export function Anime() {
         onRefresh={subRefresh}
         onIgnore={ignoreSubItem}
         onRestore={restoreSubItem}
+        lastUpdated={subLastUpdated}
       />
 
       {visibleNotTagged.length === 0 && visibleWronglyTagged.length === 0 && visibleWrongDir.length === 0 && visibleSubItems.length === 0 && !loading && !subLoading && (

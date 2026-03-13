@@ -3,6 +3,7 @@ import { useEarlyFiles } from '../hooks/useEarlyFiles';
 import { useSettings } from '../hooks/useSettings';
 import { fetchApi } from '../utils/api';
 import { EarlySeriesItem, EarlyMovieItem } from '../types/early';
+import { LastUpdated } from '../components/LastUpdated/LastUpdated';
 import './Early.css';
 
 function formatAirDate(utcStr: string): string {
@@ -145,7 +146,7 @@ function MovieCard({
 }
 
 export function Early() {
-  const { episodes, movies, loading, refreshing, error, refresh } = useEarlyFiles();
+  const { episodes, movies, loading, refreshing, error, refresh, lastUpdated } = useEarlyFiles();
   const { settings } = useSettings();
   const [episodesOpen, setEpisodesOpen] = useState(true);
   const [moviesOpen, setMoviesOpen] = useState(true);
@@ -191,6 +192,7 @@ export function Early() {
     <div className="page-content">
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
         <h1 className="early-page__heading" style={{ margin: 0, flex: 1 }}>Pre-Release Files</h1>
+        <LastUpdated timestamp={lastUpdated ?? null} />
         <button
           className="early-page__refresh"
           onClick={refresh}
