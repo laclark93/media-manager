@@ -105,18 +105,6 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore, onCa
           <ProgressBar have={haveEnglish} total={item.totalFiles} />
         </div>
         <div className="amcard__actions">
-          {openUrl && (
-            <a
-              className="amcard__btn amcard__btn--open"
-              href={openUrl}
-              target="_blank"
-              rel="noreferrer"
-              title={`Open in ${openServiceLabel}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              Open in {openServiceLabel} ↗
-            </a>
-          )}
           {onIgnore && (
             <button
               className="amcard__btn amcard__btn--ignore"
@@ -125,6 +113,18 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore, onCa
             >
               Ignore
             </button>
+          )}
+          {openUrl && (
+            <a
+              className="amcard__btn amcard__btn--icon"
+              href={openUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={`Open in ${openServiceLabel}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              ↗
+            </a>
           )}
         </div>
       </div>

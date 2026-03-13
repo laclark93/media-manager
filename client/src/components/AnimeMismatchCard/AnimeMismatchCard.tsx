@@ -125,17 +125,6 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore, onAddT
             </div>
           )}
           <div className="amcard__actions">
-            {openUrl && (
-              <a
-                className="amcard__btn amcard__btn--open"
-                href={openUrl}
-                target="_blank"
-                rel="noreferrer"
-                title={`Open in ${openServiceLabel}`}
-              >
-                Open in {openServiceLabel} ↗
-              </a>
-            )}
             {onAddTag && !tagAdded && (
               <button
                 className="amcard__btn amcard__btn--add-tag"
@@ -143,7 +132,7 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore, onAddT
                 disabled={addingTag}
                 title="Add the anime tag in Sonarr/Radarr"
               >
-                {addingTag ? 'Adding…' : 'Add Tag'}
+                {addingTag ? '…' : 'Add Tag'}
               </button>
             )}
             {tagAdded && (
@@ -157,6 +146,17 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore, onAddT
               >
                 Ignore
               </button>
+            )}
+            {openUrl && (
+              <a
+                className="amcard__btn amcard__btn--icon"
+                href={openUrl}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open in ${openServiceLabel}`}
+              >
+                ↗
+              </a>
             )}
           </div>
         </div>
