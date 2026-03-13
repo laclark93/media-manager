@@ -40,22 +40,23 @@ export function useSonarr() {
     return () => clearInterval(timer);
   }, [fetchData]);
 
-  const searchSeries = useCallback(async (seriesId: number) => {
+  const searchSeries = useCallback(async (seriesId: number, instanceUrl?: string) => {
     await fetchApi('/api/sonarr/search/series', {
       method: 'POST',
-      body: JSON.stringify({ seriesId }),
+      body: JSON.stringify({ seriesId, instanceUrl }),
     });
   }, []);
 
-  const searchEpisodes = useCallback(async (episodeIds: number[]) => {
+  const searchEpisodes = useCallback(async (episodeIds: number[], instanceUrl?: string) => {
     await fetchApi('/api/sonarr/search/episodes', {
       method: 'POST',
-      body: JSON.stringify({ episodeIds }),
+      body: JSON.stringify({ episodeIds, instanceUrl }),
     });
   }, []);
 
-  const getMissingEpisodes = useCallback(async (seriesId: number): Promise<SonarrEpisode[]> => {
-    return fetchApi<SonarrEpisode[]>(`/api/sonarr/episodes?seriesId=${seriesId}`);
+  const getMissingEpisodes = useCallback(async (seriesId: number, instanceUrl?: string): Promise<SonarrEpisode[]> => {
+    const qs = instanceUrl ? `&instanceUrl=${encodeURIComponent(instanceUrl)}` : '';
+    return fetchApi<SonarrEpisode[]>(`/api/sonarr/episodes?seriesId=${seriesId}${qs}`);
   }, []);
 
   const getMissingTimeline = useCallback(async (): Promise<MissingTimelineEntry[]> => {

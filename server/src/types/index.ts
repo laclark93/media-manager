@@ -1,10 +1,21 @@
+export interface ServiceInstance {
+  name: string;
+  url: string;
+  apiKey: string;
+  animeTag: string;
+}
+
 export interface Settings {
+  // Legacy single-instance fields (kept for backward compat / migration)
   sonarrUrl?: string;
   sonarrApiKey?: string;
   sonarrAnimeTag?: string;
   radarrUrl?: string;
   radarrApiKey?: string;
   radarrAnimeTag?: string;
+  // Multi-instance fields
+  sonarrInstances?: ServiceInstance[];
+  radarrInstances?: ServiceInstance[];
   jellyseerrUrl?: string;
   jellyseerrApiKey?: string;
   plexToken?: string;
@@ -21,12 +32,8 @@ export interface StalenessThresholds {
 }
 
 export interface AppConfig {
-  sonarrUrl: string;
-  sonarrApiKey: string;
-  sonarrAnimeTag: string;
-  radarrUrl: string;
-  radarrApiKey: string;
-  radarrAnimeTag: string;
+  sonarrInstances: ServiceInstance[];
+  radarrInstances: ServiceInstance[];
   jellyseerrUrl: string;
   jellyseerrApiKey: string;
   plexToken: string;

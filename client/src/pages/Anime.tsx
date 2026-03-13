@@ -268,14 +268,14 @@ export function Anime() {
   const { ignoredKeys, ignoreItem, restoreItem } = useIgnoredMismatches();
   const { ignoredKeys: ignoredSubKeys, ignoreItem: ignoreSubItem, restoreItem: restoreSubItem } = useIgnoredSubtitles();
 
-  const sonarrUrl = settings?.sonarrUrl || '';
-  const radarrUrl = settings?.radarrUrl || '';
-
   const handleAddTag = async (item: AnimeMismatch) => {
     const endpoint = item.service === 'sonarr'
       ? `/api/sonarr/add-anime-tag/${item.id}`
       : `/api/radarr/add-anime-tag/${item.id}`;
-    await fetchApi(endpoint, { method: 'POST' });
+    await fetchApi(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ instanceUrl: item.instanceUrl }),
+    });
   };
 
   const visibleSubItems = subItems.filter(i => !ignoredSubKeys.has(`${i.service}-${i.id}`));
@@ -296,6 +296,9 @@ export function Anime() {
   const allWrongDir = items.filter(i => i.mismatchType === 'wrong-directory');
   const visibleWrongDir = allWrongDir.filter(i => !ignoredKeys.has(`${i.service}-${i.id}-dir`));
   const ignoredWrongDir = allWrongDir.filter(i => ignoredKeys.has(`${i.service}-${i.id}-dir`));
+
+  const sonarrUrl = settings?.sonarrUrl || '';
+  const radarrUrl = settings?.radarrUrl || '';
 
   if (loading) return <div className="page"><div className="loading">Checking anime tags...</div></div>;
 

@@ -15,6 +15,8 @@ export interface EarlySeriesItem {
   service: 'sonarr';
   posterUrl?: string;
   remotePosterUrl?: string;
+  instanceUrl?: string;
+  instanceName?: string;
   episodes: EarlyEpisode[];
 }
 
@@ -31,4 +33,6 @@ export interface EarlyMovieItem {
   inCinemas?: string;
   posterUrl?: string;
   remotePosterUrl?: string;
+  instanceUrl?: string;
+  instanceName?: string;
 }

@@ -60,8 +60,10 @@ const config = getConfig();
 app.listen(config.port, () => {
   log.info(`Missing Media Dashboard v${process.env.npm_package_version || 'dev'} running on port ${config.port}`);
   log.info(`Verbose logging: ${log.isVerbose() ? 'ON' : 'OFF'} (set VERBOSE_LOGGING=false to disable)`);
-  log.info(`Sonarr:     ${config.sonarrUrl || '(not configured)'}`);
-  log.info(`Radarr:     ${config.radarrUrl || '(not configured)'}`);
+  if (config.sonarrInstances.length === 0) log.info('Sonarr:     (not configured)');
+  else config.sonarrInstances.forEach(i => log.info(`Sonarr:     ${i.name} → ${i.url}`));
+  if (config.radarrInstances.length === 0) log.info('Radarr:     (not configured)');
+  else config.radarrInstances.forEach(i => log.info(`Radarr:     ${i.name} → ${i.url}`));
   log.info(`Jellyseerr: ${config.jellyseerrUrl || '(not configured)'}`);
   log.info(`Plex:       ${config.plexToken ? '(configured)' : '(not configured)'}`);
 });

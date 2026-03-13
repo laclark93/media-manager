@@ -68,12 +68,13 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore, onAddT
     }
   };
 
+  const baseUrl = item.instanceUrl || (item.service === 'sonarr' ? sonarrUrl : radarrUrl) || '';
   const openUrl =
-    item.slug && item.service === 'sonarr' && sonarrUrl
-      ? `${sonarrUrl}/series/${item.slug}`
-      : item.slug && item.service === 'radarr' && radarrUrl
-        ? `${radarrUrl}/movie/${item.slug}`
-        : null;
+    item.slug && baseUrl
+      ? item.service === 'sonarr'
+        ? `${baseUrl}/series/${item.slug}`
+        : `${baseUrl}/movie/${item.slug}`
+      : null;
 
   const mismatchLabel =
     item.mismatchType === 'anime-not-tagged' ? 'Missing anime tag'

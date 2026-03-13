@@ -23,6 +23,8 @@ interface MovieItem {
   remotePosterUrl: string;
   dateAdded: string;
   lastAired?: string;
+  instanceUrl?: string;
+  titleSlug?: string;
 }
 
 export function Movies() {
@@ -32,7 +34,6 @@ export function Movies() {
   const { startSearch } = useSearchQueue();
 
   const thresholds = settings?.stalenessThresholds;
-  const radarrUrl = settings?.radarrUrl || '';
 
   const items = useMemo<MovieItem[]>(() =>
     movies.map(m => ({
@@ -43,6 +44,8 @@ export function Movies() {
       remotePosterUrl: getRadarrRemotePoster(m),
       dateAdded: m.added,
       lastAired: m.physicalRelease || m.digitalRelease || m.inCinemas || `${m.year}-01-01`,
+      instanceUrl: m.instanceUrl,
+      titleSlug: m.titleSlug,
     })),
     [movies]
   );
@@ -99,7 +102,7 @@ export function Movies() {
               showDateAdded={sortBy === 'dateAdded'}
               stalenessLevel={getStaleness(item.dateAdded, thresholds, item.lastAired)}
               type="movie"
-              radarrUrl={radarrUrl}
+              radarrUrl={item.instanceUrl || ''}
               radarrMovieId={item.id}
               onSearch={async () => {
                 const eid = addEntry('Search', item.title);

@@ -2,7 +2,24 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchApi } from '../utils/api';
 import { StalenessThresholds, DEFAULT_THRESHOLDS } from '../types/common';
 
+export interface InstanceData {
+  name: string;
+  url: string;
+  apiKeySet: boolean;
+  animeTag: string;
+}
+
+export interface InstanceSavePayload {
+  name: string;
+  url: string;
+  apiKey?: string;
+  animeTag: string;
+}
+
 export interface SettingsData {
+  sonarrInstances: InstanceData[];
+  radarrInstances: InstanceData[];
+  // Legacy convenience (first instance)
   sonarrUrl: string;
   sonarrApiKeySet: boolean;
   sonarrAnimeTag: string;
@@ -20,6 +37,9 @@ export interface SettingsData {
 }
 
 export interface SettingsSavePayload {
+  sonarrInstances?: InstanceSavePayload[];
+  radarrInstances?: InstanceSavePayload[];
+  // Legacy single-instance fields (still supported)
   sonarrUrl?: string;
   sonarrApiKey?: string;
   sonarrAnimeTag?: string;
@@ -45,6 +65,9 @@ export function useSettings() {
       if (!data.stalenessThresholds) {
         data.stalenessThresholds = DEFAULT_THRESHOLDS;
       }
+      // Ensure instances arrays exist (backward compat with older servers)
+      if (!data.sonarrInstances) data.sonarrInstances = [];
+      if (!data.radarrInstances) data.radarrInstances = [];
       setSettings(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch settings');

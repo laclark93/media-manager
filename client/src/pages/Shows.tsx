@@ -24,6 +24,7 @@ interface ShowItem {
   episodeFileCount: number;
   episodeCount: number;
   titleSlug: string;
+  instanceUrl?: string;
 }
 
 export function Shows() {
@@ -35,7 +36,6 @@ export function Shows() {
   const [activeTab, setActiveTab] = useState<ShowsTab>('cards');
 
   const thresholds = settings?.stalenessThresholds;
-  const sonarrUrl = settings?.sonarrUrl || '';
 
   const items = useMemo<ShowItem[]>(() =>
     series.map(s => ({
@@ -49,6 +49,7 @@ export function Shows() {
       episodeFileCount: s.statistics.episodeFileCount,
       episodeCount: s.statistics.episodeCount,
       titleSlug: s.titleSlug,
+      instanceUrl: s.instanceUrl,
     })),
     [series]
   );
@@ -139,7 +140,7 @@ export function Shows() {
                   type="show"
                   episodeFileCount={item.episodeFileCount}
                   episodeCount={item.episodeCount}
-                  sonarrUrl={sonarrUrl}
+                  sonarrUrl={item.instanceUrl || ''}
                   sonarrSeriesSlug={item.titleSlug}
                   onCardClick={() => setSelectedSeriesId(item.id)}
                   onSearchAll={async () => {

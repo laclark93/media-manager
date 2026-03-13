@@ -40,10 +40,10 @@ export function useRadarr() {
     return () => clearInterval(timer);
   }, [fetchData]);
 
-  const searchMovie = useCallback(async (movieId: number) => {
+  const searchMovie = useCallback(async (movieId: number, instanceUrl?: string) => {
     await fetchApi('/api/radarr/search', {
       method: 'POST',
-      body: JSON.stringify({ movieId }),
+      body: JSON.stringify({ movieId, instanceUrl }),
     });
   }, []);
 

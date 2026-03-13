@@ -1,11 +1,35 @@
 import { useState, useEffect, useRef } from 'react';
-import { SettingsData, SettingsSavePayload } from '../../hooks/useSettings';
+import { SettingsData, SettingsSavePayload, InstanceData } from '../../hooks/useSettings';
 import { DEFAULT_THRESHOLDS } from '../../types/common';
 import { useAuth } from '../../hooks/useAuth';
 import { fetchApi } from '../../utils/api';
 import './SettingsForm.css';
 
 type SettingsTab = 'sonarr' | 'radarr' | 'jellyseerr' | 'plex' | 'staleness' | 'security';
+
+interface InstanceFormState {
+  name: string;
+  url: string;
+  apiKey: string;
+  apiKeyLocked: boolean;
+  animeTag: string;
+  testState: 'idle' | 'testing' | 'ok' | 'fail';
+}
+
+function defaultInstance(name: string): InstanceFormState {
+  return { name, url: '', apiKey: '', apiKeyLocked: false, animeTag: 'anime', testState: 'idle' };
+}
+
+function fromServerInstance(inst: InstanceData): InstanceFormState {
+  return {
+    name: inst.name,
+    url: inst.url,
+    apiKey: '',
+    apiKeyLocked: inst.apiKeySet,
+    animeTag: inst.animeTag || 'anime',
+    testState: 'idle',
+  };
+}
 
 interface SettingsFormProps {
   initialSettings: SettingsData | null;
@@ -20,15 +44,8 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
   const { username, changePassword, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('sonarr');
 
-  const [sonarrUrl, setSonarrUrl] = useState('');
-  const [sonarrApiKey, setSonarrApiKey] = useState('');
-  const [sonarrApiKeyLocked, setSonarrApiKeyLocked] = useState(false);
-  const [sonarrAnimeTag, setSonarrAnimeTag] = useState('anime');
-
-  const [radarrUrl, setRadarrUrl] = useState('');
-  const [radarrApiKey, setRadarrApiKey] = useState('');
-  const [radarrApiKeyLocked, setRadarrApiKeyLocked] = useState(false);
-  const [radarrAnimeTag, setRadarrAnimeTag] = useState('anime');
+  const [sonarrInstances, setSonarrInstances] = useState<InstanceFormState[]>([]);
+  const [radarrInstances, setRadarrInstances] = useState<InstanceFormState[]>([]);
 
   const [jellyseerrUrl, setJellyseerrUrl] = useState('');
   const [jellyseerrApiKey, setJellyseerrApiKey] = useState('');
@@ -45,13 +62,10 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
   const [veryStaledays, setVeryStaledays] = useState(DEFAULT_THRESHOLDS.veryStaledays);
   const [ancientDays, setAncientDays] = useState(DEFAULT_THRESHOLDS.ancientDays);
 
-  const [sonarrTest, setSonarrTest] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
-  const [radarrTest, setRadarrTest] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
   const [jellyseerrTest, setJellyseerrTest] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Security tab state
   const [secNewUsername, setSecNewUsername] = useState('');
   const [secCurrentPassword, setSecCurrentPassword] = useState('');
   const [secNewPassword, setSecNewPassword] = useState('');
@@ -62,14 +76,21 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
 
   useEffect(() => {
     if (!initialSettings) return;
-    setSonarrUrl(initialSettings.sonarrUrl || '');
-    setSonarrApiKeyLocked(initialSettings.sonarrApiKeySet);
-    setSonarrApiKey('');
-    setSonarrAnimeTag(initialSettings.sonarrAnimeTag || 'anime');
-    setRadarrUrl(initialSettings.radarrUrl || '');
-    setRadarrApiKeyLocked(initialSettings.radarrApiKeySet);
-    setRadarrApiKey('');
-    setRadarrAnimeTag(initialSettings.radarrAnimeTag || 'anime');
+    // Build instances from server data
+    const sonarr = initialSettings.sonarrInstances?.length
+      ? initialSettings.sonarrInstances.map(fromServerInstance)
+      : initialSettings.sonarrUrl
+        ? [{ name: 'Sonarr', url: initialSettings.sonarrUrl, apiKey: '', apiKeyLocked: initialSettings.sonarrApiKeySet, animeTag: initialSettings.sonarrAnimeTag || 'anime', testState: 'idle' as const }]
+        : [];
+    setSonarrInstances(sonarr);
+
+    const radarr = initialSettings.radarrInstances?.length
+      ? initialSettings.radarrInstances.map(fromServerInstance)
+      : initialSettings.radarrUrl
+        ? [{ name: 'Radarr', url: initialSettings.radarrUrl, apiKey: '', apiKeyLocked: initialSettings.radarrApiKeySet, animeTag: initialSettings.radarrAnimeTag || 'anime', testState: 'idle' as const }]
+        : [];
+    setRadarrInstances(radarr);
+
     setJellyseerrUrl(initialSettings.jellyseerrUrl || '');
     setJellyseerrApiKeyLocked(initialSettings.jellyseerrApiKeySet);
     setJellyseerrApiKey('');
@@ -82,27 +103,27 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     }
   }, [initialSettings]);
 
-  // Pre-fill new username with current when switching to Security tab
   useEffect(() => {
-    if (activeTab === 'security' && username) {
-      setSecNewUsername(username);
-    }
+    if (activeTab === 'security' && username) setSecNewUsername(username);
   }, [activeTab, username]);
 
-  if (!initialSettings) {
-    return <div className="loading">Loading settings</div>;
-  }
+  if (!initialSettings) return <div className="loading">Loading settings</div>;
 
-  const handleTestSonarr = async () => {
-    setSonarrTest('testing');
-    const ok = await testSonarr(sonarrUrl, sonarrApiKey);
-    setSonarrTest(ok ? 'ok' : 'fail');
+  const updateSonarrInstance = (idx: number, changes: Partial<InstanceFormState>) => {
+    setSonarrInstances(prev => prev.map((inst, i) => i === idx ? { ...inst, ...changes } : inst));
+  };
+  const updateRadarrInstance = (idx: number, changes: Partial<InstanceFormState>) => {
+    setRadarrInstances(prev => prev.map((inst, i) => i === idx ? { ...inst, ...changes } : inst));
   };
 
-  const handleTestRadarr = async () => {
-    setRadarrTest('testing');
-    const ok = await testRadarr(radarrUrl, radarrApiKey);
-    setRadarrTest(ok ? 'ok' : 'fail');
+  const handleTestInstance = async (type: 'sonarr' | 'radarr', idx: number) => {
+    const instances = type === 'sonarr' ? sonarrInstances : radarrInstances;
+    const update = type === 'sonarr' ? updateSonarrInstance : updateRadarrInstance;
+    const testFn = type === 'sonarr' ? testSonarr : testRadarr;
+    const inst = instances[idx];
+    update(idx, { testState: 'testing' });
+    const ok = await testFn(inst.url, inst.apiKey);
+    update(idx, { testState: ok ? 'ok' : 'fail' });
   };
 
   const handleTestJellyseerr = async () => {
@@ -129,7 +150,6 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
       const pin = await fetchApi<{ id: number; code: string }>('/api/plex/auth/pin', { method: 'POST' });
       const authUrl = `https://app.plex.tv/auth#?clientID=missing-media-dashboard&code=${pin.code}&context%5Bdevice%5D%5Bproduct%5D=Missing%20Media%20Dashboard`;
       plexPopupRef.current = window.open(authUrl, 'plexAuth', 'width=800,height=700');
-
       plexPollRef.current = setInterval(async () => {
         try {
           const result = await fetchApi<{ token: string | null }>(`/api/plex/auth/pin/${pin.id}`);
@@ -156,22 +176,29 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     setSaving(true);
     setSaved(false);
     const payload: SettingsSavePayload = {
-      sonarrUrl,
-      sonarrAnimeTag,
-      radarrUrl,
-      radarrAnimeTag,
+      sonarrInstances: sonarrInstances.map(inst => ({
+        name: inst.name,
+        url: inst.url,
+        apiKey: inst.apiKey || undefined,
+        animeTag: inst.animeTag,
+      })),
+      radarrInstances: radarrInstances.map(inst => ({
+        name: inst.name,
+        url: inst.url,
+        apiKey: inst.apiKey || undefined,
+        animeTag: inst.animeTag,
+      })),
       jellyseerrUrl,
       stalenessThresholds: { staleDays, veryStaledays, ancientDays },
     };
-    if (sonarrApiKey) payload.sonarrApiKey = sonarrApiKey;
-    if (radarrApiKey) payload.radarrApiKey = radarrApiKey;
     if (jellyseerrApiKey) payload.jellyseerrApiKey = jellyseerrApiKey;
     if (plexToken) payload.plexToken = plexToken;
     await onSave(payload);
     setSaving(false);
     setSaved(true);
-    if (sonarrApiKey) { setSonarrApiKey(''); setSonarrApiKeyLocked(true); }
-    if (radarrApiKey) { setRadarrApiKey(''); setRadarrApiKeyLocked(true); }
+    // Re-lock API keys after save
+    setSonarrInstances(prev => prev.map(inst => inst.apiKey ? { ...inst, apiKey: '', apiKeyLocked: true } : inst));
+    setRadarrInstances(prev => prev.map(inst => inst.apiKey ? { ...inst, apiKey: '', apiKeyLocked: true } : inst));
     if (jellyseerrApiKey) { setJellyseerrApiKey(''); setJellyseerrApiKeyLocked(true); }
     if (plexToken) { setPlexToken(''); setPlexTokenLocked(true); }
     setTimeout(() => setSaved(false), 3000);
@@ -185,9 +212,7 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     setSecSaving(true);
     try {
       await changePassword(secCurrentPassword, secNewUsername, secNewPassword);
-      setSecCurrentPassword('');
-      setSecNewPassword('');
-      setSecConfirmPassword('');
+      setSecCurrentPassword(''); setSecNewPassword(''); setSecConfirmPassword('');
       setSecSaved(true);
       setTimeout(() => setSecSaved(false), 3000);
     } catch (err) {
@@ -206,6 +231,92 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
     { id: 'security', label: 'Security' },
   ];
 
+  const renderInstanceList = (
+    type: 'sonarr' | 'radarr',
+    instances: InstanceFormState[],
+    setInstances: React.Dispatch<React.SetStateAction<InstanceFormState[]>>,
+    update: (idx: number, changes: Partial<InstanceFormState>) => void,
+  ) => (
+    <div className="settings-form__section">
+      {instances.map((inst, idx) => (
+        <div key={idx} className="settings-form__instance">
+          {instances.length > 1 && (
+            <div className="settings-form__instance-header">
+              <span className="settings-form__instance-label">{inst.name || `Instance ${idx + 1}`}</span>
+              <button
+                className="settings-form__instance-remove"
+                onClick={() => setInstances(prev => prev.filter((_, i) => i !== idx))}
+                title="Remove instance"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          <div className="settings-form__field">
+            <label>Name</label>
+            <input
+              type="text"
+              value={inst.name}
+              onChange={(e) => update(idx, { name: e.target.value })}
+              placeholder={type === 'sonarr' ? 'Sonarr' : 'Radarr'}
+            />
+          </div>
+          <div className="settings-form__field">
+            <label>URL</label>
+            <input
+              type="text"
+              value={inst.url}
+              onChange={(e) => update(idx, { url: e.target.value })}
+              placeholder={type === 'sonarr' ? 'http://192.168.1.100:8989' : 'http://192.168.1.100:7878'}
+            />
+          </div>
+          <div className="settings-form__field">
+            <label>API Key</label>
+            <input
+              type="password"
+              value={inst.apiKeyLocked ? '••••••••••••••••' : inst.apiKey}
+              readOnly={inst.apiKeyLocked}
+              className={inst.apiKeyLocked ? 'settings-form__input--locked' : ''}
+              placeholder={`Your ${type === 'sonarr' ? 'Sonarr' : 'Radarr'} API key`}
+              onFocus={() => { if (inst.apiKeyLocked) update(idx, { apiKeyLocked: false, apiKey: '' }); }}
+              onBlur={() => {
+                const instances = initialSettings?.[`${type}Instances` as 'sonarrInstances' | 'radarrInstances'];
+                if (!inst.apiKey && instances?.[idx]?.apiKeySet) {
+                  update(idx, { apiKeyLocked: true });
+                }
+              }}
+              onChange={(e) => update(idx, { apiKey: e.target.value })}
+            />
+          </div>
+          <div className="settings-form__field">
+            <label>Anime Tag</label>
+            <input
+              type="text"
+              value={inst.animeTag}
+              onChange={(e) => update(idx, { animeTag: e.target.value })}
+              placeholder="anime"
+            />
+            <span className="settings-form__hint" style={{ marginTop: 4 }}>Tag label used to identify anime</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: instances.length > 1 ? 20 : 0 }}>
+            <button className="settings-form__test-btn" onClick={() => handleTestInstance(type, idx)} disabled={inst.testState === 'testing'}>
+              {inst.testState === 'testing' ? 'Testing...' : 'Test Connection'}
+            </button>
+            {inst.testState === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Connected</span>}
+            {inst.testState === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
+          </div>
+          {idx < instances.length - 1 && instances.length > 1 && <hr className="settings-form__divider" />}
+        </div>
+      ))}
+      <button
+        className="settings-form__add-btn"
+        onClick={() => setInstances(prev => [...prev, defaultInstance(`${type === 'sonarr' ? 'Sonarr' : 'Radarr'} ${prev.length + 1}`)])}
+      >
+        + Add {type === 'sonarr' ? 'Sonarr' : 'Radarr'} Instance
+      </button>
+    </div>
+  );
+
   return (
     <div className="settings-form">
       <h2>Settings</h2>
@@ -222,101 +333,16 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
         ))}
       </div>
 
-      {activeTab === 'sonarr' && (
-        <div className="settings-form__section">
-          <div className="settings-form__field">
-            <label>URL</label>
-            <input
-              type="text"
-              value={sonarrUrl}
-              onChange={(e) => setSonarrUrl(e.target.value)}
-              placeholder="http://192.168.1.100:8989"
-            />
-          </div>
-          <div className="settings-form__field">
-            <label>API Key</label>
-            <input
-              type="password"
-              value={sonarrApiKeyLocked ? '••••••••••••••••' : sonarrApiKey}
-              readOnly={sonarrApiKeyLocked}
-              className={sonarrApiKeyLocked ? 'settings-form__input--locked' : ''}
-              placeholder="Your Sonarr API key"
-              onFocus={() => { if (sonarrApiKeyLocked) { setSonarrApiKeyLocked(false); setSonarrApiKey(''); } }}
-              onBlur={() => { if (!sonarrApiKey && initialSettings.sonarrApiKeySet) setSonarrApiKeyLocked(true); }}
-              onChange={(e) => setSonarrApiKey(e.target.value)}
-            />
-          </div>
-          <div className="settings-form__field">
-            <label>Anime Tag</label>
-            <input
-              type="text"
-              value={sonarrAnimeTag}
-              onChange={(e) => setSonarrAnimeTag(e.target.value)}
-              placeholder="anime"
-            />
-            <span className="settings-form__hint" style={{ marginTop: 4 }}>Tag label used to identify anime series</span>
-          </div>
-          <button className="settings-form__test-btn" onClick={handleTestSonarr} disabled={sonarrTest === 'testing'}>
-            {sonarrTest === 'testing' ? 'Testing...' : 'Test Connection'}
-          </button>
-          {sonarrTest === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Connected</span>}
-          {sonarrTest === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
-        </div>
-      )}
+      {activeTab === 'sonarr' && renderInstanceList('sonarr', sonarrInstances, setSonarrInstances, updateSonarrInstance)}
 
-      {activeTab === 'radarr' && (
-        <div className="settings-form__section">
-          <div className="settings-form__field">
-            <label>URL</label>
-            <input
-              type="text"
-              value={radarrUrl}
-              onChange={(e) => setRadarrUrl(e.target.value)}
-              placeholder="http://192.168.1.100:7878"
-            />
-          </div>
-          <div className="settings-form__field">
-            <label>API Key</label>
-            <input
-              type="password"
-              value={radarrApiKeyLocked ? '••••••••••••••••' : radarrApiKey}
-              readOnly={radarrApiKeyLocked}
-              className={radarrApiKeyLocked ? 'settings-form__input--locked' : ''}
-              placeholder="Your Radarr API key"
-              onFocus={() => { if (radarrApiKeyLocked) { setRadarrApiKeyLocked(false); setRadarrApiKey(''); } }}
-              onBlur={() => { if (!radarrApiKey && initialSettings.radarrApiKeySet) setRadarrApiKeyLocked(true); }}
-              onChange={(e) => setRadarrApiKey(e.target.value)}
-            />
-          </div>
-          <div className="settings-form__field">
-            <label>Anime Tag</label>
-            <input
-              type="text"
-              value={radarrAnimeTag}
-              onChange={(e) => setRadarrAnimeTag(e.target.value)}
-              placeholder="anime"
-            />
-            <span className="settings-form__hint" style={{ marginTop: 4 }}>Tag label used to identify anime movies</span>
-          </div>
-          <button className="settings-form__test-btn" onClick={handleTestRadarr} disabled={radarrTest === 'testing'}>
-            {radarrTest === 'testing' ? 'Testing...' : 'Test Connection'}
-          </button>
-          {radarrTest === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Connected</span>}
-          {radarrTest === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
-        </div>
-      )}
+      {activeTab === 'radarr' && renderInstanceList('radarr', radarrInstances, setRadarrInstances, updateRadarrInstance)}
 
       {activeTab === 'jellyseerr' && (
         <div className="settings-form__section">
           <p className="settings-form__hint">Optional — enables the Issues tab.</p>
           <div className="settings-form__field">
             <label>URL</label>
-            <input
-              type="text"
-              value={jellyseerrUrl}
-              onChange={(e) => setJellyseerrUrl(e.target.value)}
-              placeholder="http://192.168.1.100:5055"
-            />
+            <input type="text" value={jellyseerrUrl} onChange={(e) => setJellyseerrUrl(e.target.value)} placeholder="http://192.168.1.100:5055" />
           </div>
           <div className="settings-form__field">
             <label>API Key</label>
@@ -356,17 +382,11 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
             />
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button
-              className="settings-form__test-btn"
-              onClick={handlePlexOAuth}
-              disabled={plexAuthState === 'waiting'}
-            >
+            <button className="settings-form__test-btn" onClick={handlePlexOAuth} disabled={plexAuthState === 'waiting'}>
               {plexAuthState === 'waiting' ? 'Waiting for Plex...' : 'Sign in with Plex'}
             </button>
             {plexAuthState === 'waiting' && (
-              <button className="settings-form__test-btn" onClick={() => { stopPlexPolling(); setPlexAuthState('idle'); }}>
-                Cancel
-              </button>
+              <button className="settings-form__test-btn" onClick={() => { stopPlexPolling(); setPlexAuthState('idle'); }}>Cancel</button>
             )}
             {plexAuthState === 'ok' && <span className="settings-form__test-result settings-form__test-result--ok">Token retrieved!</span>}
             {plexAuthState === 'fail' && <span className="settings-form__test-result settings-form__test-result--fail">Failed</span>}
@@ -387,30 +407,15 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
           <div className="settings-form__row">
             <div className="settings-form__field">
               <label>Stale after (days)</label>
-              <input
-                type="number"
-                min={1}
-                value={staleDays}
-                onChange={(e) => setStaleDays(parseInt(e.target.value) || 7)}
-              />
+              <input type="number" min={1} value={staleDays} onChange={(e) => setStaleDays(parseInt(e.target.value) || 7)} />
             </div>
             <div className="settings-form__field">
               <label>Very Stale after (days)</label>
-              <input
-                type="number"
-                min={1}
-                value={veryStaledays}
-                onChange={(e) => setVeryStaledays(parseInt(e.target.value) || 28)}
-              />
+              <input type="number" min={1} value={veryStaledays} onChange={(e) => setVeryStaledays(parseInt(e.target.value) || 28)} />
             </div>
             <div className="settings-form__field">
               <label>Ancient after (days)</label>
-              <input
-                type="number"
-                min={1}
-                value={ancientDays}
-                onChange={(e) => setAncientDays(parseInt(e.target.value) || 90)}
-              />
+              <input type="number" min={1} value={ancientDays} onChange={(e) => setAncientDays(parseInt(e.target.value) || 90)} />
             </div>
           </div>
         </div>
@@ -421,41 +426,19 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
           <p className="settings-form__hint">Change your login credentials. Current user: <strong>{username}</strong></p>
           <div className="settings-form__field">
             <label>Username</label>
-            <input
-              type="text"
-              value={secNewUsername}
-              onChange={(e) => setSecNewUsername(e.target.value)}
-              autoComplete="username"
-            />
+            <input type="text" value={secNewUsername} onChange={(e) => setSecNewUsername(e.target.value)} autoComplete="username" />
           </div>
           <div className="settings-form__field">
             <label>Current Password</label>
-            <input
-              type="password"
-              value={secCurrentPassword}
-              onChange={(e) => setSecCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="Required to save changes"
-            />
+            <input type="password" value={secCurrentPassword} onChange={(e) => setSecCurrentPassword(e.target.value)} autoComplete="current-password" placeholder="Required to save changes" />
           </div>
           <div className="settings-form__field">
             <label>New Password</label>
-            <input
-              type="password"
-              value={secNewPassword}
-              onChange={(e) => setSecNewPassword(e.target.value)}
-              autoComplete="new-password"
-              placeholder="At least 6 characters"
-            />
+            <input type="password" value={secNewPassword} onChange={(e) => setSecNewPassword(e.target.value)} autoComplete="new-password" placeholder="At least 6 characters" />
           </div>
           <div className="settings-form__field">
             <label>Confirm New Password</label>
-            <input
-              type="password"
-              value={secConfirmPassword}
-              onChange={(e) => setSecConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-            />
+            <input type="password" value={secConfirmPassword} onChange={(e) => setSecConfirmPassword(e.target.value)} autoComplete="new-password" />
           </div>
           {secError && <p className="settings-form__sec-error">{secError}</p>}
           <div className="settings-form__footer">
@@ -463,9 +446,7 @@ export function SettingsForm({ initialSettings, onSave, testSonarr, testRadarr, 
               {secSaving ? 'Saving...' : 'Update Credentials'}
             </button>
             {secSaved && <span className="settings-form__saved">Updated!</span>}
-            <button className="settings-form__logout-btn" onClick={logout}>
-              Sign Out
-            </button>
+            <button className="settings-form__logout-btn" onClick={logout}>Sign Out</button>
           </div>
         </div>
       )}

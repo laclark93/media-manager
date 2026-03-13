@@ -312,12 +312,13 @@ export function SubtitleModal({ item, sonarrUrl, radarrUrl, plexConfigured, onCl
     return () => { cancelled = true; };
   }, [plexConfigured, item.title, item.year, item.service, item.affectedEpisodes]);
 
+  const baseUrl = item.instanceUrl || (item.service === 'sonarr' ? sonarrUrl : radarrUrl) || '';
   const openUrl =
-    item.slug && item.service === 'sonarr' && sonarrUrl
-      ? `${sonarrUrl}/series/${item.slug}`
-      : item.slug && item.service === 'radarr' && radarrUrl
-        ? `${radarrUrl}/movie/${item.slug}`
-        : null;
+    item.slug && baseUrl
+      ? item.service === 'sonarr'
+        ? `${baseUrl}/series/${item.slug}`
+        : `${baseUrl}/movie/${item.slug}`
+      : null;
 
   const openServiceLabel = item.service === 'sonarr' ? 'Sonarr' : 'Radarr';
 

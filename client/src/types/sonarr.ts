@@ -13,6 +13,8 @@ export interface SonarrSeries {
   dateAdded: string;
   previousAiring?: string;
   latestMissingAirDate?: string;
+  instanceUrl?: string;
+  instanceName?: string;
 }
 
 export interface SonarrImage {

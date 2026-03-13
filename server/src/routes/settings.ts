@@ -13,17 +13,30 @@ const router = Router();
 router.get('/', (_req, res) => {
   const config = getConfig();
   res.json({
-    sonarrUrl: config.sonarrUrl,
-    sonarrApiKeySet: !!config.sonarrApiKey,
-    sonarrAnimeTag: config.sonarrAnimeTag,
-    radarrUrl: config.radarrUrl,
-    radarrApiKeySet: !!config.radarrApiKey,
-    radarrAnimeTag: config.radarrAnimeTag,
+    sonarrInstances: config.sonarrInstances.map(i => ({
+      name: i.name,
+      url: i.url,
+      apiKeySet: !!i.apiKey,
+      animeTag: i.animeTag,
+    })),
+    radarrInstances: config.radarrInstances.map(i => ({
+      name: i.name,
+      url: i.url,
+      apiKeySet: !!i.apiKey,
+      animeTag: i.animeTag,
+    })),
+    // Legacy convenience fields (first instance or empty)
+    sonarrUrl: config.sonarrInstances[0]?.url || '',
+    sonarrApiKeySet: !!config.sonarrInstances[0]?.apiKey,
+    sonarrAnimeTag: config.sonarrInstances[0]?.animeTag || 'anime',
+    radarrUrl: config.radarrInstances[0]?.url || '',
+    radarrApiKeySet: !!config.radarrInstances[0]?.apiKey,
+    radarrAnimeTag: config.radarrInstances[0]?.animeTag || 'anime',
     jellyseerrUrl: config.jellyseerrUrl,
     jellyseerrApiKeySet: !!config.jellyseerrApiKey,
     stalenessThresholds: config.stalenessThresholds,
-    sonarrConfigured: !!(config.sonarrUrl && config.sonarrApiKey),
-    radarrConfigured: !!(config.radarrUrl && config.radarrApiKey),
+    sonarrConfigured: config.sonarrInstances.some(i => i.url && i.apiKey),
+    radarrConfigured: config.radarrInstances.some(i => i.url && i.apiKey),
     jellyseerrConfigured: !!(config.jellyseerrUrl && config.jellyseerrApiKey),
     plexTokenSet: !!config.plexToken,
     plexConfigured: !!config.plexToken,
@@ -31,31 +44,64 @@ router.get('/', (_req, res) => {
 });
 
 router.put('/', (req, res) => {
-  const { sonarrUrl, sonarrApiKey, sonarrAnimeTag, radarrUrl, radarrApiKey, radarrAnimeTag, jellyseerrUrl, jellyseerrApiKey, plexToken, stalenessThresholds } = req.body as Settings;
+  const body = req.body;
   const current = readSettings();
-  const updated: Settings = {
-    ...current,
-    sonarrUrl: sonarrUrl ?? current.sonarrUrl,
-    // Only update API keys when a non-empty value is provided; empty means "keep existing"
-    sonarrApiKey: sonarrApiKey || current.sonarrApiKey,
-    sonarrAnimeTag: sonarrAnimeTag ?? current.sonarrAnimeTag,
-    radarrUrl: radarrUrl ?? current.radarrUrl,
-    radarrApiKey: radarrApiKey || current.radarrApiKey,
-    radarrAnimeTag: radarrAnimeTag ?? current.radarrAnimeTag,
-    jellyseerrUrl: jellyseerrUrl ?? current.jellyseerrUrl,
-    jellyseerrApiKey: jellyseerrApiKey || current.jellyseerrApiKey,
-    plexToken: plexToken || current.plexToken,
-    stalenessThresholds: stalenessThresholds ?? current.stalenessThresholds,
-  };
+
+  const updated: Settings = { ...current };
+
+  // Handle multi-instance fields
+  if (body.sonarrInstances !== undefined) {
+    const existing = current.sonarrInstances ?? [];
+    updated.sonarrInstances = (body.sonarrInstances as any[]).map((inst: any, idx: number) => ({
+      name: inst.name || `Sonarr ${idx + 1}`,
+      url: inst.url ?? '',
+      // Keep existing API key if new one is empty
+      apiKey: inst.apiKey || existing[idx]?.apiKey || '',
+      animeTag: inst.animeTag ?? 'anime',
+    }));
+    // Clear legacy fields when using instances
+    delete updated.sonarrUrl;
+    delete updated.sonarrApiKey;
+    delete updated.sonarrAnimeTag;
+  } else if (body.sonarrUrl !== undefined) {
+    // Legacy single-instance save (backward compat)
+    updated.sonarrUrl = body.sonarrUrl ?? current.sonarrUrl;
+    updated.sonarrApiKey = body.sonarrApiKey || current.sonarrApiKey;
+    updated.sonarrAnimeTag = body.sonarrAnimeTag ?? current.sonarrAnimeTag;
+  }
+
+  if (body.radarrInstances !== undefined) {
+    const existing = current.radarrInstances ?? [];
+    updated.radarrInstances = (body.radarrInstances as any[]).map((inst: any, idx: number) => ({
+      name: inst.name || `Radarr ${idx + 1}`,
+      url: inst.url ?? '',
+      apiKey: inst.apiKey || existing[idx]?.apiKey || '',
+      animeTag: inst.animeTag ?? 'anime',
+    }));
+    delete updated.radarrUrl;
+    delete updated.radarrApiKey;
+    delete updated.radarrAnimeTag;
+  } else if (body.radarrUrl !== undefined) {
+    updated.radarrUrl = body.radarrUrl ?? current.radarrUrl;
+    updated.radarrApiKey = body.radarrApiKey || current.radarrApiKey;
+    updated.radarrAnimeTag = body.radarrAnimeTag ?? current.radarrAnimeTag;
+  }
+
+  if (body.jellyseerrUrl !== undefined) updated.jellyseerrUrl = body.jellyseerrUrl ?? current.jellyseerrUrl;
+  if (body.jellyseerrApiKey !== undefined) updated.jellyseerrApiKey = body.jellyseerrApiKey || current.jellyseerrApiKey;
+  if (body.plexToken !== undefined) updated.plexToken = body.plexToken || current.plexToken;
+  if (body.stalenessThresholds !== undefined) updated.stalenessThresholds = body.stalenessThresholds ?? current.stalenessThresholds;
+
   writeSettings(updated);
   log.info('Settings: configuration updated');
-  log.verbose(`Settings: updated keys — ${Object.keys(req.body).join(', ')}`);
+  log.verbose(`Settings: updated keys — ${Object.keys(body).join(', ')}`);
   res.json({ success: true });
 });
 
 router.post('/test/sonarr', async (req, res) => {
   const { url, apiKey } = req.body;
-  const effectiveKey = apiKey || getConfig().sonarrApiKey;
+  const config = getConfig();
+  const effectiveKey = apiKey || config.sonarrInstances.find(i => i.url === url)?.apiKey || '';
   if (!url || !effectiveKey) {
     res.status(400).json({ error: 'URL and API key required' });
     return;
@@ -68,7 +114,8 @@ router.post('/test/sonarr', async (req, res) => {
 
 router.post('/test/radarr', async (req, res) => {
   const { url, apiKey } = req.body;
-  const effectiveKey = apiKey || getConfig().radarrApiKey;
+  const config = getConfig();
+  const effectiveKey = apiKey || config.radarrInstances.find(i => i.url === url)?.apiKey || '';
   if (!url || !effectiveKey) {
     res.status(400).json({ error: 'URL and API key required' });
     return;

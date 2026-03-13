@@ -190,6 +190,66 @@
   border-color: var(--danger);
 }
 
+/* ── Instances ────────────────────────────────────────────── */
+.settings-form__instance {
+  margin-bottom: 8px;
+}
+
+.settings-form__instance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.settings-form__instance-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.settings-form__instance-remove {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--danger);
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-form__instance-remove:hover {
+  background: rgba(231, 76, 60, 0.1);
+  border-color: var(--danger);
+}
+
+.settings-form__divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+.settings-form__add-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 10px;
+  margin-top: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-form__add-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
 /* ── Mobile ───────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .settings-form__tabs {

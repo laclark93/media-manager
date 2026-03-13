@@ -16,6 +16,9 @@ export interface RadarrMovie {
   physicalRelease?: string;
   digitalRelease?: string;
   inCinemas?: string;
+  titleSlug?: string;
+  instanceUrl?: string;
+  instanceName?: string;
 }
 
 export interface RadarrImage {

@@ -219,7 +219,7 @@ export function Early() {
                   item={item}
                   deletingFileId={deletingFileId}
                   onDelete={handleDeleteEpisodeFile}
-                  sonarrUrl={settings?.sonarrUrl ?? ''}
+                  sonarrUrl={item.instanceUrl || settings?.sonarrUrl || ''}
                 />
               ))
         )}
@@ -241,7 +241,7 @@ export function Early() {
                   item={item}
                   deletingFileId={deletingFileId}
                   onDelete={handleDeleteMovieFile}
-                  radarrUrl={settings?.radarrUrl ?? ''}
+                  radarrUrl={item.instanceUrl || settings?.radarrUrl || ''}
                 />
               ))
         )}

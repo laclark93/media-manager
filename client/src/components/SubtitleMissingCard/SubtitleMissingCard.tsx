@@ -54,12 +54,13 @@ export function SubtitleMissingCard({ item, sonarrUrl, radarrUrl, onIgnore, onCa
     }
   };
 
+  const baseUrl = item.instanceUrl || (item.service === 'sonarr' ? sonarrUrl : radarrUrl) || '';
   const openUrl =
-    item.slug && item.service === 'sonarr' && sonarrUrl
-      ? `${sonarrUrl}/series/${item.slug}`
-      : item.slug && item.service === 'radarr' && radarrUrl
-        ? `${radarrUrl}/movie/${item.slug}`
-        : null;
+    item.slug && baseUrl
+      ? item.service === 'sonarr'
+        ? `${baseUrl}/series/${item.slug}`
+        : `${baseUrl}/movie/${item.slug}`
+      : null;
 
   const openServiceLabel = item.service === 'sonarr' ? 'Sonarr' : 'Radarr';
   const subsLabel = item.foundSubtitles || 'unknown';

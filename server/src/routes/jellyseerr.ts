@@ -26,22 +26,38 @@ router.get('/issues', async (_req: Request, res: Response) => {
       return;
     }
 
-    // Fetch issues + Sonarr series + Radarr movies in parallel for enrichment
-    const [issuesResp, sonarrSeries, radarrMovies] = await Promise.all([
+    // Fetch issues + all Sonarr/Radarr instances for enrichment
+    const sonarrPromises = config.sonarrInstances.map(inst =>
+      sonarrService.getSeries(inst.url, inst.apiKey).catch(() => [])
+    );
+    const radarrPromises = config.radarrInstances.map(inst =>
+      radarrService.getMovies(inst.url, inst.apiKey).catch(() => [])
+    );
+
+    const [issuesResp, ...rest] = await Promise.all([
       jellyseerrService.getIssues(config.jellyseerrUrl, config.jellyseerrApiKey),
-      config.sonarrUrl && config.sonarrApiKey
-        ? sonarrService.getSeries(config.sonarrUrl, config.sonarrApiKey).catch(() => [])
-        : Promise.resolve([]),
-      config.radarrUrl && config.radarrApiKey
-        ? radarrService.getMovies(config.radarrUrl, config.radarrApiKey).catch(() => [])
-        : Promise.resolve([]),
+      ...sonarrPromises,
+      ...radarrPromises,
     ]);
 
-    const issues: JellyseerrIssue[] = issuesResp.results ?? [];
+    const sonarrResults = rest.slice(0, sonarrPromises.length);
+    const radarrResults = rest.slice(sonarrPromises.length);
 
-    // Build lookup maps by internal service ID
-    const seriesById = new Map(sonarrSeries.map((s: any) => [s.id, s]));
-    const moviesById = new Map(radarrMovies.map((m: any) => [m.id, m]));
+    // Build lookup maps by internal service ID (first match wins across instances)
+    const seriesById = new Map<number, { series: any; instIdx: number }>();
+    sonarrResults.forEach((seriesList: any[], instIdx: number) => {
+      for (const s of seriesList) {
+        if (!seriesById.has(s.id)) seriesById.set(s.id, { series: s, instIdx });
+      }
+    });
+    const moviesById = new Map<number, { movie: any; instIdx: number }>();
+    radarrResults.forEach((movieList: any[], instIdx: number) => {
+      for (const m of movieList) {
+        if (!moviesById.has(m.id)) moviesById.set(m.id, { movie: m, instIdx });
+      }
+    });
+
+    const issues: JellyseerrIssue[] = issuesResp.results ?? [];
 
     const enriched = issues.map((issue: JellyseerrIssue) => {
       const media = issue.media;
@@ -54,26 +70,28 @@ router.get('/issues', async (_req: Request, res: Response) => {
       let mediaSlug: string | undefined;
 
       if (media.mediaType === 'movie' && serviceId) {
-        const movie = moviesById.get(serviceId) as any;
-        if (movie) {
+        const entry = moviesById.get(serviceId);
+        if (entry) {
+          const movie = entry.movie;
           mediaTitle = movie.title;
           mediaYear = movie.year;
           mediaSlug = movie.titleSlug;
           const poster = movie.images?.find((i: any) => i.coverType === 'poster');
           if (poster) {
-            posterUrl = `/api/radarr/image${poster.url}`;
+            posterUrl = `/api/radarr/image/${entry.instIdx}${poster.url}`;
             remotePosterUrl = poster.remoteUrl;
           }
         }
       } else if (media.mediaType === 'tv' && serviceId) {
-        const series = seriesById.get(serviceId) as any;
-        if (series) {
+        const entry = seriesById.get(serviceId);
+        if (entry) {
+          const series = entry.series;
           mediaTitle = series.title;
           mediaYear = series.year;
           mediaSlug = series.titleSlug;
           const poster = series.images?.find((i: any) => i.coverType === 'poster');
           if (poster) {
-            posterUrl = `/api/sonarr/image${poster.url}`;
+            posterUrl = `/api/sonarr/image/${entry.instIdx}${poster.url}`;
             remotePosterUrl = poster.remoteUrl;
           }
         }
@@ -116,27 +134,29 @@ router.post('/issues/:id/search', async (req: Request, res: Response) => {
     };
 
     const issueId = req.params['id'];
-    if (mediaType === 'movie' && config.radarrUrl && config.radarrApiKey) {
+    if (mediaType === 'movie' && config.radarrInstances.length > 0) {
+      const inst = config.radarrInstances[0];
       log.info(` Jellyseerr issue #${issueId}: triggering Radarr search for movie ${externalServiceId}`);
-      const result = await radarrService.searchMovie(config.radarrUrl, config.radarrApiKey, [externalServiceId]);
+      const result = await radarrService.searchMovie(inst.url, inst.apiKey, [externalServiceId]);
       res.json(result);
-    } else if (mediaType === 'tv' && config.sonarrUrl && config.sonarrApiKey) {
+    } else if (mediaType === 'tv' && config.sonarrInstances.length > 0) {
+      const inst = config.sonarrInstances[0];
       if (problemSeason && problemEpisode) {
         // Find the specific episode
-        const episodes = await sonarrService.getEpisodes(config.sonarrUrl, config.sonarrApiKey, externalServiceId);
+        const episodes = await sonarrService.getEpisodes(inst.url, inst.apiKey, externalServiceId);
         const episode = (episodes as any[]).find(
           (e) => e.seasonNumber === problemSeason && e.episodeNumber === problemEpisode
         );
         if (episode) {
           log.info(` Jellyseerr issue #${issueId}: triggering Sonarr search for S${String(problemSeason).padStart(2,'0')}E${String(problemEpisode).padStart(2,'0')} (series ${externalServiceId})`);
-          const result = await sonarrService.searchEpisodes(config.sonarrUrl, config.sonarrApiKey, [episode.id]);
+          const result = await sonarrService.searchEpisodes(inst.url, inst.apiKey, [episode.id]);
           res.json(result);
           return;
         }
       }
       // Fallback: search full series
       log.info(` Jellyseerr issue #${issueId}: triggering Sonarr series search for series ${externalServiceId}`);
-      const result = await sonarrService.searchSeries(config.sonarrUrl, config.sonarrApiKey, externalServiceId);
+      const result = await sonarrService.searchSeries(inst.url, inst.apiKey, externalServiceId);
       res.json(result);
     } else {
       res.status(400).json({ error: 'Service not configured or unknown media type' });
