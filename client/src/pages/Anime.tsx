@@ -5,6 +5,7 @@ import { useSettings } from '../hooks/useSettings';
 import { useIgnoredMismatches } from '../hooks/useIgnoredMismatches';
 import { useIgnoredSubtitles } from '../hooks/useIgnoredSubtitles';
 import { AnimeMismatch, SubtitleMissing } from '../types/anime';
+import { fetchApi } from '../utils/api';
 import { AnimeMismatchCard } from '../components/AnimeMismatchCard/AnimeMismatchCard';
 import { SubtitleMissingCard } from '../components/SubtitleMissingCard/SubtitleMissingCard';
 import { SubtitleModal } from '../components/SubtitleModal/SubtitleModal';
@@ -21,12 +22,13 @@ interface MismatchSectionProps {
   onRefresh: () => void;
   onIgnore?: (key: string) => void;
   onRestore?: (key: string) => void;
+  onAddTag?: (item: AnimeMismatch) => Promise<void>;
   defaultOpen?: boolean;
 }
 
 function MismatchSection({
   title, description, items, ignoredItems, sonarrUrl, radarrUrl,
-  loading, onRefresh, onIgnore, onRestore, defaultOpen = true,
+  loading, onRefresh, onIgnore, onRestore, onAddTag, defaultOpen = true,
 }: MismatchSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [showIgnored, setShowIgnored] = useState(false);
@@ -61,6 +63,7 @@ function MismatchSection({
                   sonarrUrl={sonarrUrl}
                   radarrUrl={radarrUrl}
                   onIgnore={onIgnore ? () => onIgnore(key) : undefined}
+                  onAddTag={onAddTag ? () => onAddTag(item) : undefined}
                 />
               );
             })}
@@ -268,6 +271,13 @@ export function Anime() {
   const sonarrUrl = settings?.sonarrUrl || '';
   const radarrUrl = settings?.radarrUrl || '';
 
+  const handleAddTag = async (item: AnimeMismatch) => {
+    const endpoint = item.service === 'sonarr'
+      ? `/api/sonarr/add-anime-tag/${item.id}`
+      : `/api/radarr/add-anime-tag/${item.id}`;
+    await fetchApi(endpoint, { method: 'POST' });
+  };
+
   const visibleSubItems = subItems.filter(i => !ignoredSubKeys.has(`${i.service}-${i.id}`));
   const ignoredSubItems = subItems.filter(i => ignoredSubKeys.has(`${i.service}-${i.id}`));
 
@@ -306,6 +316,7 @@ export function Anime() {
           onRefresh={refresh}
           onIgnore={(key) => ignoreItem(key + '-tag')}
           onRestore={(key) => restoreItem(key + '-tag')}
+          onAddTag={handleAddTag}
         />
       )}
       {(visibleWronglyTagged.length > 0 || ignoredWronglyTagged.length > 0) && (

@@ -9,13 +9,16 @@ interface AnimeMismatchCardProps {
   sonarrUrl?: string;
   radarrUrl?: string;
   onIgnore?: () => void;
+  onAddTag?: () => Promise<void>;
 }
 
-export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore }: AnimeMismatchCardProps) {
+export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore, onAddTag }: AnimeMismatchCardProps) {
   const [imgSrc, setImgSrc] = useState(item.remotePosterUrl || item.posterUrl || '');
   const [imgFailed, setImgFailed] = useState(false);
   const [pendingIgnore, setPendingIgnore] = useState(false);
   const [countdown, setCountdown] = useState(UNDO_SECONDS);
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagAdded, setTagAdded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -51,6 +54,19 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore }: Anim
       clearInterval(intervalRef.current!);
     };
   }, []);
+
+  const handleAddTag = async () => {
+    if (!onAddTag || addingTag || tagAdded) return;
+    setAddingTag(true);
+    try {
+      await onAddTag();
+      setTagAdded(true);
+    } catch {
+      /* ignore */
+    } finally {
+      setAddingTag(false);
+    }
+  };
 
   const openUrl =
     item.slug && item.service === 'sonarr' && sonarrUrl
@@ -119,6 +135,19 @@ export function AnimeMismatchCard({ item, sonarrUrl, radarrUrl, onIgnore }: Anim
               >
                 Open in {openServiceLabel} ↗
               </a>
+            )}
+            {onAddTag && !tagAdded && (
+              <button
+                className="amcard__btn amcard__btn--add-tag"
+                onClick={handleAddTag}
+                disabled={addingTag}
+                title="Add the anime tag in Sonarr/Radarr"
+              >
+                {addingTag ? 'Adding…' : 'Add Tag'}
+              </button>
+            )}
+            {tagAdded && (
+              <span className="amcard__tag-added">Tag added</span>
             )}
             {onIgnore && (
               <button

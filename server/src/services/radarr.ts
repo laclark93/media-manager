@@ -83,6 +83,26 @@ export async function deleteMovieFile(baseUrl: string, apiKey: string, fileId: n
   log.info(`Radarr: deleted movie file ${fileId}`);
 }
 
+export async function addTagToMovie(baseUrl: string, apiKey: string, movieId: number, tagId: number): Promise<void> {
+  log.verbose(`Radarr: adding tag ${tagId} to movie ${movieId}`);
+  const resp = await client(baseUrl, apiKey).get(`/api/v3/movie/${movieId}`);
+  const movie = resp.data;
+  if (!movie.tags.includes(tagId)) {
+    movie.tags.push(tagId);
+    await client(baseUrl, apiKey).put(`/api/v3/movie/${movieId}`, movie);
+    log.info(`Radarr: added tag ${tagId} to movie ${movieId}`);
+  } else {
+    log.verbose(`Radarr: movie ${movieId} already has tag ${tagId}`);
+  }
+}
+
+export async function createTag(baseUrl: string, apiKey: string, label: string): Promise<ArrTag> {
+  log.verbose(`Radarr: creating tag "${label}"`);
+  const resp = await client(baseUrl, apiKey).post('/api/v3/tag', { label });
+  log.info(`Radarr: created tag "${label}" with id ${resp.data.id}`);
+  return resp.data;
+}
+
 export async function proxyImage(baseUrl: string, apiKey: string, imagePath: string) {
   const resp = await client(baseUrl, apiKey).get(`/${imagePath}`, {
     responseType: 'stream',

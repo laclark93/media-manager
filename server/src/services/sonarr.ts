@@ -146,6 +146,26 @@ export async function getWantedMissingDetailed(baseUrl: string, apiKey: string):
   return records;
 }
 
+export async function addTagToSeries(baseUrl: string, apiKey: string, seriesId: number, tagId: number): Promise<void> {
+  log.verbose(`Sonarr: adding tag ${tagId} to series ${seriesId}`);
+  const resp = await client(baseUrl, apiKey).get(`/api/v3/series/${seriesId}`);
+  const series = resp.data;
+  if (!series.tags.includes(tagId)) {
+    series.tags.push(tagId);
+    await client(baseUrl, apiKey).put(`/api/v3/series/${seriesId}`, series);
+    log.info(`Sonarr: added tag ${tagId} to series ${seriesId}`);
+  } else {
+    log.verbose(`Sonarr: series ${seriesId} already has tag ${tagId}`);
+  }
+}
+
+export async function createTag(baseUrl: string, apiKey: string, label: string): Promise<ArrTag> {
+  log.verbose(`Sonarr: creating tag "${label}"`);
+  const resp = await client(baseUrl, apiKey).post('/api/v3/tag', { label });
+  log.info(`Sonarr: created tag "${label}" with id ${resp.data.id}`);
+  return resp.data;
+}
+
 export async function proxyImage(baseUrl: string, apiKey: string, imagePath: string) {
   const resp = await client(baseUrl, apiKey).get(`/${imagePath}`, {
     responseType: 'stream',

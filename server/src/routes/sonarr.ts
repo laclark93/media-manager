@@ -163,6 +163,28 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
   }
 });
 
+router.post('/add-anime-tag/:id', async (req: Request, res: Response) => {
+  try {
+    const seriesId = parseInt(req.params.id, 10);
+    log.verbose(`Sonarr route: add-anime-tag for series ${seriesId}`);
+    const config = getConfig();
+    if (!config.sonarrUrl || !config.sonarrApiKey) {
+      res.status(400).json({ error: 'Sonarr not configured' });
+      return;
+    }
+    const tags = await sonarrService.getTags(config.sonarrUrl, config.sonarrApiKey);
+    let animeTag = tags.find(t => t.label.toLowerCase() === config.sonarrAnimeTag.toLowerCase());
+    if (!animeTag) {
+      animeTag = await sonarrService.createTag(config.sonarrUrl, config.sonarrApiKey, config.sonarrAnimeTag);
+    }
+    await sonarrService.addTagToSeries(config.sonarrUrl, config.sonarrApiKey, seriesId, animeTag.id);
+    res.json({ success: true });
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
 router.get('/subtitle-check', async (_req: Request, res: Response) => {
   try {
     log.verbose('Sonarr route: subtitle-check starting');

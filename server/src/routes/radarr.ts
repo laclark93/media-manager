@@ -112,6 +112,28 @@ router.get('/anime-check', async (_req: Request, res: Response) => {
   }
 });
 
+router.post('/add-anime-tag/:id', async (req: Request, res: Response) => {
+  try {
+    const movieId = parseInt(req.params.id, 10);
+    log.verbose(`Radarr route: add-anime-tag for movie ${movieId}`);
+    const config = getConfig();
+    if (!config.radarrUrl || !config.radarrApiKey) {
+      res.status(400).json({ error: 'Radarr not configured' });
+      return;
+    }
+    const tags = await radarrService.getTags(config.radarrUrl, config.radarrApiKey);
+    let animeTag = tags.find(t => t.label.toLowerCase() === config.radarrAnimeTag.toLowerCase());
+    if (!animeTag) {
+      animeTag = await radarrService.createTag(config.radarrUrl, config.radarrApiKey, config.radarrAnimeTag);
+    }
+    await radarrService.addTagToMovie(config.radarrUrl, config.radarrApiKey, movieId, animeTag.id);
+    res.json({ success: true });
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
+    res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });
+  }
+});
+
 router.get('/subtitle-check', async (_req: Request, res: Response) => {
   try {
     log.verbose('Radarr route: subtitle-check starting');
