@@ -87,10 +87,10 @@ export function Toolbar({
     };
   }, [filterOpen]);
 
-  const hasActiveRange = missingRange !== null;
+  const hasActiveRange = missingRange != null;
   const rangeMin = missingRange ? missingRange[0] : 0;
   const rangeMax = missingRange ? missingRange[1] : maxMissing;
-  const hasActiveDateRange = lastAiredRange !== null;
+  const hasActiveDateRange = lastAiredRange != null;
   const hasAnyFilter = stalenessFilter.size > 0 || hasActiveRange || hasActiveDateRange;
   const today = new Date().toISOString().slice(0, 10);
 
