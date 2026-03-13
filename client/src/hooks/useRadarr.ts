@@ -11,6 +11,7 @@ export function useRadarr() {
   const [movies, setMovies] = useState<RadarrMovie[]>(cached?.data ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(cached?.fetchedAt && cached.fetchedAt > 0 ? cached.fetchedAt : null);
   const setBgLoading = useSetBackgroundLoading('radarr');
 
   const fetchData = useCallback(async (force: boolean) => {
@@ -24,6 +25,7 @@ export function useRadarr() {
       const data = await fetchApi<RadarrMovie[]>('/api/radarr/movies', opts);
       cache.set(data);
       setMovies(data);
+      setLastUpdated(Date.now());
     } catch (err) {
       if (firstLoad) setError(err instanceof Error ? err.message : 'Failed to fetch movies');
     } finally {
@@ -47,5 +49,5 @@ export function useRadarr() {
     });
   }, []);
 
-  return { movies, loading, error, refresh, searchMovie };
+  return { movies, loading, error, refresh, lastUpdated, searchMovie };
 }

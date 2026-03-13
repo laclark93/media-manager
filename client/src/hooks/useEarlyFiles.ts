@@ -13,6 +13,8 @@ export function useEarlyFiles() {
   const [loading, setLoading] = useState(!episodesCache.get() && !moviesCache.get());
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const epCached = episodesCache.get();
+  const [lastUpdated, setLastUpdated] = useState<number | null>(epCached?.fetchedAt && epCached.fetchedAt > 0 ? epCached.fetchedAt : null);
   const setBgLoading = useSetBackgroundLoading('earlyFiles');
 
   const fetchData = useCallback(async (force: boolean) => {
@@ -36,6 +38,7 @@ export function useEarlyFiles() {
         moviesCache.set(radarr.value);
         setMovies(radarr.value);
       }
+      if (sonarr.status === 'fulfilled' || radarr.status === 'fulfilled') setLastUpdated(Date.now());
       if (sonarr.status === 'rejected' && radarr.status === 'rejected') {
         if (firstLoad) setError('Failed to fetch early files data');
       }
@@ -56,5 +59,5 @@ export function useEarlyFiles() {
     return () => clearInterval(timer);
   }, [fetchData]);
 
-  return { episodes, movies, loading, refreshing, error, refresh };
+  return { episodes, movies, loading, refreshing, error, refresh, lastUpdated };
 }

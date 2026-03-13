@@ -11,6 +11,7 @@ export function useAnimeMismatch() {
   const [items, setItems] = useState<AnimeMismatch[]>(cached?.data ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(cached?.fetchedAt && cached.fetchedAt > 0 ? cached.fetchedAt : null);
   const setBgLoading = useSetBackgroundLoading('animeMismatch');
 
   const fetchData = useCallback(async (force: boolean) => {
@@ -31,6 +32,7 @@ export function useAnimeMismatch() {
       results.sort((a, b) => a.title.localeCompare(b.title));
       cache.set(results);
       setItems(results);
+      setLastUpdated(Date.now());
       if (sonarr.status === 'rejected' && radarr.status === 'rejected') {
         if (firstLoad) setError('Failed to fetch data from Sonarr and Radarr');
       }
@@ -50,5 +52,5 @@ export function useAnimeMismatch() {
     return () => clearInterval(timer);
   }, [fetchData]);
 
-  return { items, loading, error, refresh };
+  return { items, loading, error, refresh, lastUpdated };
 }

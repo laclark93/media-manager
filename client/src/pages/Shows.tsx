@@ -28,7 +28,7 @@ interface ShowItem {
 }
 
 export function Shows() {
-  const { series, loading, error, searchSeries, searchEpisodes, getMissingEpisodes, getMissingTimeline, refresh } = useSonarr();
+  const { series, loading, error, searchSeries, searchEpisodes, getMissingEpisodes, getMissingTimeline, refresh, lastUpdated } = useSonarr();
   const { settings } = useSettings();
   const { addEntry, updateEntry } = useActivityLog();
   const { startSearch } = useSearchQueue();
@@ -118,6 +118,7 @@ export function Shows() {
             maxMissing={maxMissing}
             lastAiredRange={lastAiredRange}
             onLastAiredRangeChange={setLastAiredRange}
+            lastUpdated={lastUpdated}
           />
           {filtered.length === 0 ? (
             <div className="empty-state">

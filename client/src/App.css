@@ -144,3 +144,10 @@ body {
     padding: 48px 16px;
   }
 }
+
+/* ── Last Updated ─────────────────────────────────────────── */
+.last-updated {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

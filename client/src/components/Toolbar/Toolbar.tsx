@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { StalenessLevel, SortOption } from '../../types/common';
+import { LastUpdated } from '../LastUpdated/LastUpdated';
 import './Toolbar.css';
 
 export interface SortOptionDef {
@@ -36,6 +37,7 @@ interface ToolbarProps {
   maxMissing?: number;
   lastAiredRange?: [string, string] | null;
   onLastAiredRangeChange?: (range: [string, string] | null) => void;
+  lastUpdated?: number | null;
 }
 
 const STALENESS_OPTIONS: { value: StalenessLevel | 'all'; label: string }[] = [
@@ -67,6 +69,7 @@ export function Toolbar({
   maxMissing = 0,
   lastAiredRange,
   onLastAiredRangeChange,
+  lastUpdated,
 }: ToolbarProps) {
   const [searchState, setSearchState] = useState<'idle' | 'searching' | 'queued'>('idle');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -338,6 +341,7 @@ export function Toolbar({
             {searchState === 'searching' ? 'Searching...' : searchState === 'queued' ? 'Queued' : (searchAllLabel || `Search All (${filteredCount})`)}
           </button>
         )}
+        <LastUpdated timestamp={lastUpdated ?? null} />
         {onRefresh && (
           <button
             className="toolbar__refresh-btn"

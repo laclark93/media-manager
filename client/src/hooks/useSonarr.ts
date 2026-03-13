@@ -11,6 +11,7 @@ export function useSonarr() {
   const [series, setSeries] = useState<SonarrSeries[]>(cached?.data ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(cached?.fetchedAt && cached.fetchedAt > 0 ? cached.fetchedAt : null);
   const setBgLoading = useSetBackgroundLoading('sonarr');
 
   const fetchData = useCallback(async (force: boolean) => {
@@ -24,6 +25,7 @@ export function useSonarr() {
       const data = await fetchApi<SonarrSeries[]>('/api/sonarr/series', opts);
       cache.set(data);
       setSeries(data);
+      setLastUpdated(Date.now());
     } catch (err) {
       if (firstLoad) setError(err instanceof Error ? err.message : 'Failed to fetch series');
     } finally {
@@ -63,5 +65,5 @@ export function useSonarr() {
     return fetchApi<MissingTimelineEntry[]>('/api/sonarr/missing-timeline');
   }, []);
 
-  return { series, loading, error, refresh, searchSeries, searchEpisodes, getMissingEpisodes, getMissingTimeline };
+  return { series, loading, error, refresh, lastUpdated, searchSeries, searchEpisodes, getMissingEpisodes, getMissingTimeline };
 }

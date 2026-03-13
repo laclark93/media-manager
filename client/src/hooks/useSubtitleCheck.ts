@@ -11,6 +11,7 @@ export function useSubtitleCheck() {
   const [items, setItems] = useState<SubtitleMissing[]>(cached?.data ?? []);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(cached?.fetchedAt && cached.fetchedAt > 0 ? cached.fetchedAt : null);
   const setBgLoading = useSetBackgroundLoading('subtitleCheck');
 
   const fetchData = useCallback(async (force: boolean) => {
@@ -31,6 +32,7 @@ export function useSubtitleCheck() {
       results.sort((a, b) => a.title.localeCompare(b.title));
       cache.set(results);
       setItems(results);
+      setLastUpdated(Date.now());
       if (sonarr.status === 'rejected' && radarr.status === 'rejected') {
         if (firstLoad) setError('Failed to fetch subtitle data from Sonarr and Radarr');
       }
@@ -50,5 +52,5 @@ export function useSubtitleCheck() {
     return () => clearInterval(timer);
   }, [fetchData]);
 
-  return { items, loading, error, refresh };
+  return { items, loading, error, refresh, lastUpdated };
 }

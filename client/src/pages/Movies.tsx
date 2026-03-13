@@ -28,7 +28,7 @@ interface MovieItem {
 }
 
 export function Movies() {
-  const { movies, loading, error, searchMovie, refresh } = useRadarr();
+  const { movies, loading, error, searchMovie, refresh, lastUpdated } = useRadarr();
   const { settings } = useSettings();
   const { addEntry, updateEntry } = useActivityLog();
   const { startSearch } = useSearchQueue();
@@ -82,6 +82,7 @@ export function Movies() {
         }}
         searchAllLabel={`Search All (${filteredCount})`}
         sortOptions={MOVIE_SORT_OPTIONS}
+        lastUpdated={lastUpdated}
       />
       {filtered.length === 0 ? (
         <div className="empty-state">
