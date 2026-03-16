@@ -273,6 +273,8 @@ export function Anime() {
   const { ignoredKeys, ignoreItem, restoreItem } = useIgnoredMismatches();
   const { ignoredKeys: ignoredSubKeys, ignoreItem: ignoreSubItem, restoreItem: restoreSubItem } = useIgnoredSubtitles();
 
+  const [taggedKeys, setTaggedKeys] = useState<Set<string>>(new Set());
+
   const handleAddTag = async (item: AnimeMismatch) => {
     const endpoint = item.service === 'sonarr'
       ? `/api/sonarr/add-anime-tag/${item.id}`
@@ -281,6 +283,7 @@ export function Anime() {
       method: 'POST',
       body: JSON.stringify({ instanceUrl: item.instanceUrl }),
     });
+    setTaggedKeys(prev => new Set([...prev, `${item.service}-${item.id}`]));
   };
 
   const visibleSubItems = subItems.filter(i => !ignoredSubKeys.has(`${i.service}-${i.id}`));
@@ -291,7 +294,7 @@ export function Anime() {
 
   // "anime-not-tagged": show if has missing episodes/files OR has subtitle issues
   const allNotTagged = items.filter(i => i.mismatchType === 'anime-not-tagged' && (i.hasMissing || subItemKeys.has(`${i.service}-${i.id}`)));
-  const visibleNotTagged = allNotTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}-tag`));
+  const visibleNotTagged = allNotTagged.filter(i => !ignoredKeys.has(`${i.service}-${i.id}-tag`) && !taggedKeys.has(`${i.service}-${i.id}`));
   const ignoredNotTagged = allNotTagged.filter(i => ignoredKeys.has(`${i.service}-${i.id}-tag`));
   // "tagged-not-anime": only show if has missing episodes/files
   const allWronglyTagged = items.filter(i => i.mismatchType === 'tagged-not-anime' && i.hasMissing);
