@@ -12,6 +12,7 @@ export const DEFAULT_SORT_OPTIONS: SortOptionDef[] = [
   { value: 'title', label: 'Title' },
   { value: 'dateAdded', label: 'Date Added' },
   { value: 'lastAired', label: 'Last Aired' },
+  { value: 'staleness', label: 'Staleness' },
   { value: 'percentMissing', label: '% Missing' },
   { value: 'numberMissing', label: '# Missing' },
 ];

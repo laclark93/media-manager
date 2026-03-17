@@ -15,7 +15,7 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
   const [sortBy, _setSortBy] = useState<SortOption>(() => {
     if (storageKey) {
       const saved = localStorage.getItem(`${storageKey}.sortBy`);
-      if (saved && ['title', 'dateAdded', 'lastAired', 'percentMissing', 'numberMissing'].includes(saved)) return saved as SortOption;
+      if (saved && ['title', 'dateAdded', 'lastAired', 'staleness', 'percentMissing', 'numberMissing'].includes(saved)) return saved as SortOption;
     }
     return 'dateAdded';
   });
@@ -100,6 +100,16 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
           const aMissing = (a.episodeCount || 0) - (a.episodeFileCount || 0);
           const bMissing = (b.episodeCount || 0) - (b.episodeFileCount || 0);
           cmp = aMissing - bMissing;
+          break;
+        }
+        case 'staleness': {
+          const refDate = (item: T) => {
+            const added = item.dateAdded ? new Date(item.dateAdded).getTime() : 0;
+            const release = (item.oldestMissing || item.lastAired) ? new Date((item.oldestMissing || item.lastAired)!).getTime() : 0;
+            return Math.max(added || 0, release || 0) || Date.now();
+          };
+          // Older reference date = more stale = higher value
+          cmp = refDate(a) - refDate(b);
           break;
         }
       }

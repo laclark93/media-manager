@@ -5,7 +5,7 @@ export enum StalenessLevel {
   Ancient = 'ancient',
 }
 
-export type SortOption = 'title' | 'dateAdded' | 'lastAired' | 'percentMissing' | 'numberMissing';
+export type SortOption = 'title' | 'dateAdded' | 'lastAired' | 'percentMissing' | 'numberMissing' | 'staleness';
 
 export interface StalenessThresholds {
   staleDays: number;
