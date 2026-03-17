@@ -36,11 +36,11 @@ export function Dashboard() {
   // Movies missing files
   const missingMovies = movies.filter(m => !m.hasFile && m.isAvailable);
 
-  // Staleness breakdown for shows (uses same logic as Shows page: latestMissingAirDate || previousAiring)
+  // Staleness breakdown for shows (uses oldest missing episode air date for staleness)
   const showStaleness = { fresh: 0, stale: 0, veryStale: 0, ancient: 0 };
   for (const s of showsWithMissing) {
-    const lastAired = s.latestMissingAirDate || s.previousAiring;
-    const level = getStaleness(s.dateAdded, thresholds, lastAired);
+    const stalenessDate = s.oldestMissingAirDate || s.latestMissingAirDate || s.previousAiring;
+    const level = getStaleness(s.dateAdded, thresholds, stalenessDate);
     if (level === StalenessLevel.Fresh) showStaleness.fresh++;
     else if (level === StalenessLevel.Stale) showStaleness.stale++;
     else if (level === StalenessLevel.VeryStale) showStaleness.veryStale++;

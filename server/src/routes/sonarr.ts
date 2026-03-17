@@ -58,11 +58,16 @@ router.get('/series', async (_req: Request, res: Response) => {
         (s) => s.monitored && s.statistics && s.statistics.episodeCount > s.statistics.episodeFileCount
       );
       const latestMissingBySeriesId = new Map<number, string>();
+      const oldestMissingBySeriesId = new Map<number, string>();
       for (const ep of wantedMissing) {
         if (ep.airDateUtc) {
           const existing = latestMissingBySeriesId.get(ep.seriesId);
           if (!existing || ep.airDateUtc > existing) {
             latestMissingBySeriesId.set(ep.seriesId, ep.airDateUtc);
+          }
+          const oldest = oldestMissingBySeriesId.get(ep.seriesId);
+          if (!oldest || ep.airDateUtc < oldest) {
+            oldestMissingBySeriesId.set(ep.seriesId, ep.airDateUtc);
           }
         }
       }
@@ -72,6 +77,7 @@ router.get('/series', async (_req: Request, res: Response) => {
         return {
           ...s,
           latestMissingAirDate: latestMissingBySeriesId.get(s.id) ?? null,
+          oldestMissingAirDate: oldestMissingBySeriesId.get(s.id) ?? null,
           instanceUrl: inst.url,
           instanceName: inst.name,
           // Override poster URLs with instance index

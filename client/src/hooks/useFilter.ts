@@ -6,6 +6,7 @@ interface Filterable {
   title: string;
   dateAdded: string;
   lastAired?: string;
+  oldestMissing?: string;
   episodeFileCount?: number;
   episodeCount?: number;
 }
@@ -48,7 +49,7 @@ export function useFilter<T extends Filterable>(items: T[], thresholds?: Stalene
     }
 
     if (stalenessFilter.size > 0) {
-      result = result.filter(item => stalenessFilter.has(getStaleness(item.dateAdded, thresholds, item.lastAired)));
+      result = result.filter(item => stalenessFilter.has(getStaleness(item.dateAdded, thresholds, item.oldestMissing || item.lastAired)));
     }
 
     if (missingRange) {

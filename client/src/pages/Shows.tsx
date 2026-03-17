@@ -21,6 +21,7 @@ interface ShowItem {
   remotePosterUrl: string;
   dateAdded: string;
   lastAired?: string;
+  oldestMissing?: string;
   episodeFileCount: number;
   episodeCount: number;
   titleSlug: string;
@@ -46,6 +47,7 @@ export function Shows() {
       remotePosterUrl: getSonarrRemotePoster(s),
       dateAdded: s.dateAdded,
       lastAired: s.latestMissingAirDate || s.previousAiring,
+      oldestMissing: s.oldestMissingAirDate,
       episodeFileCount: s.statistics.episodeFileCount,
       episodeCount: s.statistics.episodeCount,
       titleSlug: s.titleSlug,
@@ -137,7 +139,7 @@ export function Shows() {
                   remotePosterUrl={item.remotePosterUrl}
                   dateAdded={item.dateAdded}
                   showDateAdded={sortBy === 'dateAdded'}
-                  stalenessLevel={getStaleness(item.dateAdded, thresholds, item.lastAired)}
+                  stalenessLevel={getStaleness(item.dateAdded, thresholds, item.oldestMissing || item.lastAired)}
                   type="show"
                   episodeFileCount={item.episodeFileCount}
                   episodeCount={item.episodeCount}
