@@ -2,12 +2,11 @@ import { StalenessLevel, StalenessThresholds, DEFAULT_THRESHOLDS } from '../type
 
 export function getStaleness(dateAdded: string, thresholds?: StalenessThresholds, releaseDate?: string): StalenessLevel {
   const t = thresholds || DEFAULT_THRESHOLDS;
-  // If added before release, staleness starts from release date
-  let referenceDate = new Date(dateAdded).getTime();
-  if (releaseDate) {
-    const releaseTime = new Date(releaseDate).getTime();
-    if (releaseTime > referenceDate) referenceDate = releaseTime;
-  }
+  // Use the later of dateAdded vs releaseDate (e.g. latest missing episode air date)
+  const addedTime = dateAdded ? new Date(dateAdded).getTime() : 0;
+  const releaseTime = releaseDate ? new Date(releaseDate).getTime() : 0;
+  let referenceDate = Math.max(addedTime || 0, releaseTime || 0);
+  if (!referenceDate) referenceDate = Date.now(); // no dates at all → treat as fresh
   const days = Math.floor(
     (Date.now() - referenceDate) / (1000 * 60 * 60 * 24)
   );
