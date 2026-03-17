@@ -5,6 +5,7 @@ import './EpisodeModal.css';
 interface EpisodeModalProps {
   seriesTitle: string;
   seriesId: number;
+  dateAdded?: string;
   getMissingEpisodes: (seriesId: number) => Promise<SonarrEpisode[]>;
   searchEpisodes: (episodeIds: number[]) => Promise<void>;
   searchSeries: (seriesId: number) => Promise<void>;
@@ -14,6 +15,7 @@ interface EpisodeModalProps {
 export function EpisodeModal({
   seriesTitle,
   seriesId,
+  dateAdded,
   getMissingEpisodes,
   searchEpisodes,
   searchSeries,
@@ -69,6 +71,11 @@ export function EpisodeModal({
         <div className="modal__header">
           <div className="modal__header-left">
             <div className="modal__title">{seriesTitle} — Missing Episodes</div>
+            {dateAdded && (
+              <div className="modal__date-added">
+                Added {new Date(dateAdded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
             <button
               className={`modal__search-all modal__search-all--${searchAllState}`}
               disabled={searchAllState !== 'idle' || loading || episodes.length === 0}

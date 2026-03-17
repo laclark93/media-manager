@@ -35,6 +35,13 @@
   gap: 14px;
   flex: 1;
   min-width: 0;
+  flex-wrap: wrap;
+}
+
+.modal__date-added {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  width: 100%;
 }
 
 .modal__title {

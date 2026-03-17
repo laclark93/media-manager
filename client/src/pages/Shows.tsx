@@ -164,6 +164,7 @@ export function Shows() {
         <EpisodeModal
           seriesTitle={selectedSeries.title}
           seriesId={selectedSeriesId}
+          dateAdded={selectedSeries.dateAdded}
           getMissingEpisodes={getMissingEpisodes}
           searchEpisodes={async (episodeIds) => {
             const eid = addEntry('Search Episodes', selectedSeries.title);
