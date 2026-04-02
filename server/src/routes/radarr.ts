@@ -48,9 +48,8 @@ router.get('/movies', async (_req: Request, res: Response) => {
       ? jellyseerrService.getRequesters(config.jellyseerrUrl, config.jellyseerrApiKey)
       : Promise.resolve(null as Map<string, string | null> | null);
 
-    const [requesters, ...instanceArrays] = await Promise.all([
-      requestersPromise,
-      ...instances.map(async (inst, idx) => {
+    const requesters: Map<string, string | null> | null = await requestersPromise;
+    const instanceArrays = await Promise.all(instances.map(async (inst, idx) => {
         log.verbose(`Radarr [${inst.name}]: fetching missing movies`);
         const allMovies = await radarrService.getMovies(inst.url, inst.apiKey);
         const missingMovies = allMovies.filter((m) => m.monitored && !m.hasFile && m.isAvailable);
@@ -67,8 +66,7 @@ router.get('/movies', async (_req: Request, res: Response) => {
             url: img.url ? `/api/radarr/image/${idx}${img.url}` : img.url,
           })),
         }));
-      }),
-    ]);
+      }));
     res.json(instanceArrays.flat());
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;

@@ -55,9 +55,8 @@ router.get('/series', async (_req: Request, res: Response) => {
       ? jellyseerrService.getRequesters(config.jellyseerrUrl, config.jellyseerrApiKey)
       : Promise.resolve(null as Map<string, string | null> | null);
 
-    const [requesters, ...instanceArrays] = await Promise.all([
-      requestersPromise,
-      ...instances.map(async (inst, idx) => {
+    const requesters: Map<string, string | null> | null = await requestersPromise;
+    const instanceArrays = await Promise.all(instances.map(async (inst, idx) => {
         const [allSeries, wantedMissing] = await Promise.all([
           sonarrService.getSeries(inst.url, inst.apiKey),
           sonarrService.getWantedMissing(inst.url, inst.apiKey),
@@ -98,8 +97,7 @@ router.get('/series', async (_req: Request, res: Response) => {
             })),
           };
         });
-      }),
-    ]);
+      }));
     res.json(instanceArrays.flat());
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
