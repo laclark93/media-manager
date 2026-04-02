@@ -56,6 +56,27 @@
   letter-spacing: 0.5px;
 }
 
+.media-card__requester {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 5px 8px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.media-card:hover .media-card__requester {
+  opacity: 1;
+}
+
 .media-card__info {
   padding: 8px 10px 10px;
 }

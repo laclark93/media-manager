@@ -42,3 +42,36 @@ export async function testConnection(baseUrl: string, apiKey: string): Promise<b
     return false;
   }
 }
+
+export async function getRequesters(baseUrl: string, apiKey: string): Promise<Map<string, string | null>> {
+  const map = new Map<string, string | null>();
+  let skip = 0;
+  const take = 1000;
+  try {
+    while (true) {
+      log.verbose(`Jellyseerr: fetching requesters (skip=${skip})`);
+      const resp = await client(baseUrl, apiKey).get('/api/v1/request', {
+        params: { take, skip, sort: 'added' },
+      });
+      const results: any[] = resp.data.results ?? [];
+      const total: number = resp.data.pageInfo?.results ?? 0;
+      for (const req of results) {
+        const media = req.media;
+        const name: string | null = req.requestedBy?.displayName || req.requestedBy?.username || null;
+        if (media.mediaType === 'tv' && media.tvdbId) {
+          const key = `tv:${media.tvdbId}`;
+          if (!map.has(key)) map.set(key, name);
+        } else if (media.mediaType === 'movie' && media.tmdbId) {
+          const key = `movie:${media.tmdbId}`;
+          if (!map.has(key)) map.set(key, name);
+        }
+      }
+      skip += take;
+      if (skip >= total || results.length === 0) break;
+    }
+    log.verbose(`Jellyseerr: loaded ${map.size} requesters`);
+  } catch (err) {
+    log.verbose(`Jellyseerr: failed to fetch requesters — ${err instanceof Error ? err.message : err}`);
+  }
+  return map;
+}

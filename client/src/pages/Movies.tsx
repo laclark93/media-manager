@@ -25,6 +25,7 @@ interface MovieItem {
   lastAired?: string;
   instanceUrl?: string;
   titleSlug?: string;
+  requestedBy?: string | null;
 }
 
 export function Movies() {
@@ -46,6 +47,7 @@ export function Movies() {
       lastAired: m.physicalRelease || m.digitalRelease || m.inCinemas || `${m.year}-01-01`,
       instanceUrl: m.instanceUrl,
       titleSlug: m.titleSlug,
+      requestedBy: m.requestedBy,
     })),
     [movies]
   );
@@ -105,6 +107,7 @@ export function Movies() {
               type="movie"
               radarrUrl={item.instanceUrl || ''}
               radarrMovieId={item.id}
+              requestedBy={item.requestedBy}
               onSearch={async () => {
                 const eid = addEntry('Search', item.title);
                 try { await searchMovie(item.id, item.instanceUrl); updateEntry(eid, 'success', 'Queued'); }

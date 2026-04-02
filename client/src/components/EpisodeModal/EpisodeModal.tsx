@@ -6,6 +6,7 @@ interface EpisodeModalProps {
   seriesTitle: string;
   seriesId: number;
   dateAdded?: string;
+  requestedBy?: string | null;
   getMissingEpisodes: (seriesId: number) => Promise<SonarrEpisode[]>;
   searchEpisodes: (episodeIds: number[]) => Promise<void>;
   searchSeries: (seriesId: number) => Promise<void>;
@@ -16,6 +17,7 @@ export function EpisodeModal({
   seriesTitle,
   seriesId,
   dateAdded,
+  requestedBy,
   getMissingEpisodes,
   searchEpisodes,
   searchSeries,
@@ -74,6 +76,11 @@ export function EpisodeModal({
             {dateAdded && (
               <div className="modal__date-added">
                 Added {new Date(dateAdded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
+            )}
+            {requestedBy !== undefined && (
+              <div className="modal__date-added">
+                {requestedBy ? `Requested by ${requestedBy}` : 'Direct Request'}
               </div>
             )}
             <button

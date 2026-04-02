@@ -26,6 +26,7 @@ interface ShowItem {
   episodeCount: number;
   titleSlug: string;
   instanceUrl?: string;
+  requestedBy?: string | null;
 }
 
 export function Shows() {
@@ -52,6 +53,7 @@ export function Shows() {
       episodeCount: s.statistics.episodeCount,
       titleSlug: s.titleSlug,
       instanceUrl: s.instanceUrl,
+      requestedBy: s.requestedBy,
     })),
     [series]
   );
@@ -145,6 +147,7 @@ export function Shows() {
                   episodeCount={item.episodeCount}
                   sonarrUrl={item.instanceUrl || ''}
                   sonarrSeriesSlug={item.titleSlug}
+                  requestedBy={item.requestedBy}
                   onCardClick={() => setSelectedSeriesId(item.id)}
                   onSearchAll={async () => {
                     const eid = addEntry('Search All', item.title);
@@ -167,6 +170,7 @@ export function Shows() {
           seriesTitle={selectedSeries.title}
           seriesId={selectedSeriesId}
           dateAdded={selectedSeries.dateAdded}
+          requestedBy={selectedSeries.requestedBy}
           getMissingEpisodes={getMissingEpisodes}
           searchEpisodes={async (episodeIds) => {
             const eid = addEntry('Search Episodes', selectedSeries.title);

@@ -4,6 +4,7 @@ import { getConfig, findRadarrInstance } from '../config.js';
 import * as log from '../logger.js';
 import * as radarrService from '../services/radarr.js';
 import * as plexService from '../services/plex.js';
+import * as jellyseerrService from '../services/jellyseerr.js';
 import { ServiceInstance } from '../types/index.js';
 
 const router = Router();
@@ -42,22 +43,33 @@ router.get('/movies', async (_req: Request, res: Response) => {
   try {
     const instances = getInstances();
     if (instances.length === 0) { res.status(400).json({ error: 'Radarr not configured' }); return; }
-    const allResults = await Promise.all(instances.map(async (inst, idx) => {
-      log.verbose(`Radarr [${inst.name}]: fetching missing movies`);
-      const allMovies = await radarrService.getMovies(inst.url, inst.apiKey);
-      const missingMovies = allMovies.filter((m) => m.monitored && !m.hasFile && m.isAvailable);
-      log.info(`Radarr [${inst.name}]: ${missingMovies.length} missing (of ${allMovies.length} total)`);
-      return missingMovies.map(m => ({
-        ...m,
-        instanceUrl: inst.url,
-        instanceName: inst.name,
-        images: m.images.map(img => ({
-          ...img,
-          url: img.url ? `/api/radarr/image/${idx}${img.url}` : img.url,
-        })),
-      }));
-    }));
-    res.json(allResults.flat());
+    const config = getConfig();
+    const requestersPromise = (config.jellyseerrUrl && config.jellyseerrApiKey)
+      ? jellyseerrService.getRequesters(config.jellyseerrUrl, config.jellyseerrApiKey)
+      : Promise.resolve(null as Map<string, string | null> | null);
+
+    const [requesters, ...instanceArrays] = await Promise.all([
+      requestersPromise,
+      ...instances.map(async (inst, idx) => {
+        log.verbose(`Radarr [${inst.name}]: fetching missing movies`);
+        const allMovies = await radarrService.getMovies(inst.url, inst.apiKey);
+        const missingMovies = allMovies.filter((m) => m.monitored && !m.hasFile && m.isAvailable);
+        log.info(`Radarr [${inst.name}]: ${missingMovies.length} missing (of ${allMovies.length} total)`);
+        return missingMovies.map(m => ({
+          ...m,
+          instanceUrl: inst.url,
+          instanceName: inst.name,
+          requestedBy: requesters != null
+            ? (requesters.get(`movie:${m.tmdbId}`) !== undefined ? requesters.get(`movie:${m.tmdbId}`) ?? null : null)
+            : undefined,
+          images: m.images.map(img => ({
+            ...img,
+            url: img.url ? `/api/radarr/image/${idx}${img.url}` : img.url,
+          })),
+        }));
+      }),
+    ]);
+    res.json(instanceArrays.flat());
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
     res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });

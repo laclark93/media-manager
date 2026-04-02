@@ -16,6 +16,7 @@ export interface SonarrSeries {
   oldestMissingAirDate?: string;
   instanceUrl?: string;
   instanceName?: string;
+  requestedBy?: string | null;
 }
 
 export interface SonarrImage {

@@ -20,6 +20,7 @@ interface MediaCardProps {
   radarrMovieId?: number;
   sonarrUrl?: string;
   sonarrSeriesSlug?: string;
+  requestedBy?: string | null;
   onCardClick?: () => void;
   onSearchAll?: () => Promise<void>;
   onSearch?: () => Promise<void>;
@@ -40,6 +41,7 @@ export function MediaCard({
   radarrMovieId,
   sonarrUrl,
   sonarrSeriesSlug,
+  requestedBy,
   onCardClick,
   onSearchAll,
   onSearch,
@@ -115,6 +117,11 @@ export function MediaCard({
         >
           {getStalenessLabel(stalenessLevel)}
         </span>
+        {requestedBy !== undefined && (
+          <div className="media-card__requester">
+            {requestedBy ? `Requested by ${requestedBy}` : 'Direct Request'}
+          </div>
+        )}
       </div>
       <div className="media-card__info">
         <div className="media-card__title" title={title}>{title}</div>

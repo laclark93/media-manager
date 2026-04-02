@@ -4,6 +4,7 @@ import { getConfig, findSonarrInstance } from '../config.js';
 import * as log from '../logger.js';
 import * as sonarrService from '../services/sonarr.js';
 import * as plexService from '../services/plex.js';
+import * as jellyseerrService from '../services/jellyseerr.js';
 import { ServiceInstance } from '../types/index.js';
 
 const router = Router();
@@ -49,46 +50,57 @@ router.get('/series', async (_req: Request, res: Response) => {
       res.status(400).json({ error: 'Sonarr not configured' });
       return;
     }
-    const allResults = await Promise.all(instances.map(async (inst, idx) => {
-      const [allSeries, wantedMissing] = await Promise.all([
-        sonarrService.getSeries(inst.url, inst.apiKey),
-        sonarrService.getWantedMissing(inst.url, inst.apiKey),
-      ]);
-      const missingSeries = allSeries.filter(
-        (s) => s.monitored && s.statistics && s.statistics.episodeCount > s.statistics.episodeFileCount
-      );
-      const latestMissingBySeriesId = new Map<number, string>();
-      const oldestMissingBySeriesId = new Map<number, string>();
-      for (const ep of wantedMissing) {
-        if (ep.airDateUtc) {
-          const existing = latestMissingBySeriesId.get(ep.seriesId);
-          if (!existing || ep.airDateUtc > existing) {
-            latestMissingBySeriesId.set(ep.seriesId, ep.airDateUtc);
-          }
-          const oldest = oldestMissingBySeriesId.get(ep.seriesId);
-          if (!oldest || ep.airDateUtc < oldest) {
-            oldestMissingBySeriesId.set(ep.seriesId, ep.airDateUtc);
+    const config = getConfig();
+    const requestersPromise = (config.jellyseerrUrl && config.jellyseerrApiKey)
+      ? jellyseerrService.getRequesters(config.jellyseerrUrl, config.jellyseerrApiKey)
+      : Promise.resolve(null as Map<string, string | null> | null);
+
+    const [requesters, ...instanceArrays] = await Promise.all([
+      requestersPromise,
+      ...instances.map(async (inst, idx) => {
+        const [allSeries, wantedMissing] = await Promise.all([
+          sonarrService.getSeries(inst.url, inst.apiKey),
+          sonarrService.getWantedMissing(inst.url, inst.apiKey),
+        ]);
+        const missingSeries = allSeries.filter(
+          (s) => s.monitored && s.statistics && s.statistics.episodeCount > s.statistics.episodeFileCount
+        );
+        const latestMissingBySeriesId = new Map<number, string>();
+        const oldestMissingBySeriesId = new Map<number, string>();
+        for (const ep of wantedMissing) {
+          if (ep.airDateUtc) {
+            const existing = latestMissingBySeriesId.get(ep.seriesId);
+            if (!existing || ep.airDateUtc > existing) {
+              latestMissingBySeriesId.set(ep.seriesId, ep.airDateUtc);
+            }
+            const oldest = oldestMissingBySeriesId.get(ep.seriesId);
+            if (!oldest || ep.airDateUtc < oldest) {
+              oldestMissingBySeriesId.set(ep.seriesId, ep.airDateUtc);
+            }
           }
         }
-      }
-      log.info(`Sonarr [${inst.name}]: ${missingSeries.length} missing (of ${allSeries.length} total)`);
-      return missingSeries.map(s => {
-        const poster = s.images.find(i => i.coverType === 'poster');
-        return {
-          ...s,
-          latestMissingAirDate: latestMissingBySeriesId.get(s.id) ?? null,
-          oldestMissingAirDate: oldestMissingBySeriesId.get(s.id) ?? null,
-          instanceUrl: inst.url,
-          instanceName: inst.name,
-          // Override poster URLs with instance index
-          images: s.images.map(img => ({
-            ...img,
-            url: img.url ? `/api/sonarr/image/${idx}${img.url}` : img.url,
-          })),
-        };
-      });
-    }));
-    res.json(allResults.flat());
+        log.info(`Sonarr [${inst.name}]: ${missingSeries.length} missing (of ${allSeries.length} total)`);
+        return missingSeries.map(s => {
+          const poster = s.images.find(i => i.coverType === 'poster');
+          return {
+            ...s,
+            latestMissingAirDate: latestMissingBySeriesId.get(s.id) ?? null,
+            oldestMissingAirDate: oldestMissingBySeriesId.get(s.id) ?? null,
+            instanceUrl: inst.url,
+            instanceName: inst.name,
+            requestedBy: requesters != null
+              ? (requesters.get(`tv:${s.tvdbId}`) !== undefined ? requesters.get(`tv:${s.tvdbId}`) ?? null : null)
+              : undefined,
+            // Override poster URLs with instance index
+            images: s.images.map(img => ({
+              ...img,
+              url: img.url ? `/api/sonarr/image/${idx}${img.url}` : img.url,
+            })),
+          };
+        });
+      }),
+    ]);
+    res.json(instanceArrays.flat());
   } catch (err) {
     const status = axios.isAxiosError(err) ? err.response?.status || 502 : 500;
     res.status(status).json({ error: err instanceof Error ? err.message : 'Unknown error' });

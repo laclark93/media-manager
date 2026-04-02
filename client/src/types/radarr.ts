@@ -17,8 +17,10 @@ export interface RadarrMovie {
   digitalRelease?: string;
   inCinemas?: string;
   titleSlug?: string;
+  tmdbId?: number;
   instanceUrl?: string;
   instanceName?: string;
+  requestedBy?: string | null;
 }
 
 export interface RadarrImage {
